@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // Standalone is for Docker only. On Vercel (Next 16.3+) it crashes looking
+  // for next-server.js.nft.json — see vercel/next.js#96646.
+  output: process.env.VERCEL ? undefined : "standalone",
   images: {
     remotePatterns: [
       {
