@@ -145,6 +145,10 @@ export default function RulesPage() {
         ·{" "}
         <Link href="/winners" className="text-gold hover:underline">
           winners
+        </Link>{" "}
+        ·{" "}
+        <Link href="/stats" className="text-gold hover:underline">
+          glory board / stats
         </Link>
       </p>
     </div>

@@ -5,37 +5,44 @@ import { toPng } from "html-to-image";
 
 const EXPORT_PAD_PX = 40;
 
-/** Canvas can't paint oklch()/lab() from Tailwind v4 — bake computed rgb onto the clone. */
-function bakeComputedColors(sourceRoot: HTMLElement, cloneRoot: HTMLElement) {
-  const props = [
-    "color",
-    "background-color",
-    "border-top-color",
-    "border-right-color",
-    "border-bottom-color",
-    "border-left-color",
-    "outline-color",
-    "text-decoration-color",
-    "fill",
-    "stroke",
-    "box-shadow",
-    "text-shadow",
-    "opacity",
-    "background-image",
-  ] as const;
+const COLOR_PROPS = [
+  "color",
+  "background-color",
+  "border-top-color",
+  "border-right-color",
+  "border-bottom-color",
+  "border-left-color",
+  "outline-color",
+  "text-decoration-color",
+  "fill",
+  "stroke",
+  "box-shadow",
+  "text-shadow",
+  "opacity",
+  "background-image",
+] as const;
 
-  const sources = [sourceRoot, ...sourceRoot.querySelectorAll<HTMLElement>("*")];
-  const clones = [cloneRoot, ...cloneRoot.querySelectorAll<HTMLElement>("*")];
-
-  for (let i = 0; i < sources.length; i += 1) {
-    const src = sources[i];
-    const clone = clones[i];
-    if (!src || !clone) continue;
-    const computed = window.getComputedStyle(src);
-    for (const prop of props) {
+/**
+ * Canvas can't paint Tailwind v4 oklch()/lab(). Inline computed rgb on the live
+ * tree before capture (html-to-image Options has no onclone in our version).
+ */
+function bakeComputedColors(root: HTMLElement): Array<{ el: HTMLElement; cssText: string }> {
+  const snapshot: Array<{ el: HTMLElement; cssText: string }> = [];
+  const els = [root, ...root.querySelectorAll<HTMLElement>("*")];
+  for (const el of els) {
+    snapshot.push({ el, cssText: el.style.cssText });
+    const computed = window.getComputedStyle(el);
+    for (const prop of COLOR_PROPS) {
       const value = computed.getPropertyValue(prop);
-      if (value) clone.style.setProperty(prop, value);
+      if (value) el.style.setProperty(prop, value);
     }
+  }
+  return snapshot;
+}
+
+function restoreStyles(snapshot: Array<{ el: HTMLElement; cssText: string }>) {
+  for (const { el, cssText } of snapshot) {
+    el.style.cssText = cssText;
   }
 }
 
@@ -93,16 +100,15 @@ export function ShareExportBar({
     node.style.backgroundColor = "#0b0b0c";
     node.style.boxSizing = "border-box";
 
+    let colorSnapshot: Array<{ el: HTMLElement; cssText: string }> = [];
     try {
-      // Warm-up pass helps Safari / Chrome paint fonts before serialize
+      colorSnapshot = bakeComputedColors(node);
+
       await toPng(node, {
         cacheBust: true,
         pixelRatio: 1,
         backgroundColor: "#0b0b0c",
         includeQueryParams: true,
-        onclone: (_doc, cloned) => {
-          bakeComputedColors(node, cloned as HTMLElement);
-        },
       });
 
       const dataUrl = await toPng(node, {
@@ -110,9 +116,6 @@ export function ShareExportBar({
         pixelRatio: 2,
         backgroundColor: "#0b0b0c",
         includeQueryParams: true,
-        onclone: (_doc, cloned) => {
-          bakeComputedColors(node, cloned as HTMLElement);
-        },
       });
 
       const a = document.createElement("a");
@@ -123,6 +126,7 @@ export function ShareExportBar({
     } catch {
       setMsg("Screenshot failed — try again");
     } finally {
+      restoreStyles(colorSnapshot);
       node.style.padding = prev.padding;
       node.style.backgroundColor = prev.background;
       node.style.boxSizing = prev.boxSizing;

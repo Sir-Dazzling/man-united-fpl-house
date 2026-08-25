@@ -32,7 +32,11 @@ export function PrizeRulesLegend({ compact = false }: { compact?: boolean }) {
         </ul>
       ) : (
         <p className="mt-2">
-          FPL can show tied ranks. Cash uses our tie-breaks.{" "}
+          FPL can show tied ranks. Cash uses our tie-breaks. Season tallies on{" "}
+          <Link href="/stats" className="text-gold hover:underline">
+            Stats
+          </Link>
+          .{" "}
           <Link href="/rules" className="text-gold hover:underline">
             Full rules →
           </Link>
@@ -40,6 +44,11 @@ export function PrizeRulesLegend({ compact = false }: { compact?: boolean }) {
       )}
       {!compact ? (
         <p className="mt-3">
+          Season tallies (MOTW, podiums, MOTM, fraud) live on{" "}
+          <Link href="/stats" className="text-gold hover:underline">
+            Stats / Glory Board
+          </Link>
+          .{" "}
           <Link href="/rules" className="text-gold hover:underline">
             Read the full rules &amp; algorithms →
           </Link>

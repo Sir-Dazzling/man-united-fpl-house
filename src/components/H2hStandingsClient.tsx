@@ -43,7 +43,7 @@ export function H2hStandingsClient() {
 
   const { league, results, hidden, code, gw, topPf, topPa } = data;
   const csvRows = [
-    ["rank", "manager", "team", "wdl", "pf", "pa", "pts"],
+    ["rank", "manager", "team", "wdl", "pf", "pa", "gd", "pts"],
     ...results.map((r) => [
       String(r.rank),
       r.player_name,
@@ -51,6 +51,7 @@ export function H2hStandingsClient() {
       `${r.matches_won}-${r.matches_drawn}-${r.matches_lost}`,
       String(r.points_for),
       String(r.points_against ?? 0),
+      String(r.points_for - (r.points_against ?? 0)),
       String(r.total),
     ]),
   ];
@@ -177,6 +178,27 @@ export function H2hStandingsClient() {
               render: (row) => (
                 <span className="tabular-nums">{row.points_against ?? 0}</span>
               ),
+            },
+            {
+              key: "gd",
+              header: "GD",
+              align: "right",
+              render: (row) => {
+                const gd = row.points_for - (row.points_against ?? 0);
+                return (
+                  <span
+                    className={`tabular-nums ${
+                      gd > 0
+                        ? "text-emerald-400"
+                        : gd < 0
+                          ? "text-red-400"
+                          : "text-white/70"
+                    }`}
+                  >
+                    {gd > 0 ? `+${gd}` : gd}
+                  </span>
+                );
+              },
             },
             {
               key: "total",

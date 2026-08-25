@@ -10,6 +10,7 @@ FPL Classic + H2H analytics, cash desks, fraud banter, and earnings for the Man 
 | `/rules` | House rules + full ranking algorithms |
 | `/classic` `/h2h` | Live standings + PNG/CSV export |
 | `/winners` | Weekly podium + fraud hall of shame |
+| `/stats` | Glory Board — MOTW, podium, MOTM, fraud tallies |
 | `/motm` | MOTM races + monthly table confirms |
 | `/earnings` | Paid vs outstanding cash board |
 | `/admin/gameweek` | Confirm weekly winners & mark paid |

@@ -63,7 +63,7 @@ async function attachBadgeUrls<T extends { entryId: number }>(
   }));
 }
 
-type Candidate = {
+export type Candidate = {
   entryId: number;
   managerName: string;
   teamName: string;
@@ -161,7 +161,7 @@ export function applyTransferTieBreakAndPrizes(
   return winners;
 }
 
-function pickFraud(
+export function pickFraud(
   candidates: Candidate[],
   roast: string,
 ): FraudResult[] {
