@@ -250,46 +250,38 @@ export async function resolveClassicWeekly(gw: number): Promise<{
     metricValue: number;
   }>;
 
-  if (useLive) {
-    rows = results.map((r) => ({
-      entryId: r.entry,
-      managerName: r.player_name,
-      teamName: r.entry_name,
-      sortPrimary: r.event_total,
-      metricLabel: "GW points",
-      metricValue: r.event_total,
-    }));
-    if (rows.every((r) => r.sortPrimary === 0)) {
+  // Prefer entry history for GW points (same source as Classic table / FPL team page).
+  // Standings event_total is only a fallback when history has no row yet.
+  rows = await Promise.all(
+    results.map(async (r) => {
+      let pts = 0;
+      try {
+        pts = await getGwPoints(r.entry, gw);
+      } catch {
+        pts = 0;
+      }
+      if (pts === 0 && useLive && r.event_total > 0) {
+        pts = r.event_total;
+      }
       return {
-        category: "classic_weekly",
-        winners: [],
-        fraud: [],
-        emptyReason: "No GW scores yet — check back after the deadline.",
+        entryId: r.entry,
+        managerName: r.player_name,
+        teamName: r.entry_name,
+        sortPrimary: pts,
+        metricLabel: "GW points",
+        metricValue: pts,
       };
-    }
-  } else {
-    // Past / finished current: history only for that GW
-    rows = await Promise.all(
-      results.map(async (r) => {
-        const pts = await getGwPoints(r.entry, gw);
-        return {
-          entryId: r.entry,
-          managerName: r.player_name,
-          teamName: r.entry_name,
-          sortPrimary: pts,
-          metricLabel: "GW points",
-          metricValue: pts,
-        };
-      }),
-    );
-    if (rows.every((r) => r.sortPrimary === 0)) {
-      return {
-        category: "classic_weekly",
-        winners: [],
-        fraud: [],
-        emptyReason: `No Classic scores recorded for GW${gw}.`,
-      };
-    }
+    }),
+  );
+  if (rows.every((r) => r.sortPrimary === 0)) {
+    return {
+      category: "classic_weekly",
+      winners: [],
+      fraud: [],
+      emptyReason: useLive
+        ? "No GW scores yet — check back after the deadline."
+        : `No Classic scores recorded for GW${gw}.`,
+    };
   }
 
   const candidates = await withTransfers(rows, gw);

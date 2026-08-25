@@ -132,8 +132,9 @@ export function ClassicStandingsClient() {
           ]}
         />
         <p className="text-xs text-white/40">
-          Weekly cash uses this GW column (top 4 after tie-breaks) — not FPL
-          tied display ranks alone.
+          GW points from each manager&apos;s FPL entry history (same source as
+          Winners). Rank re-sorted by corrected season total. Weekly cash still
+          uses GW points + house tie-breaks.
           {hidden > 0
             ? ` · ${hidden} suspended manager${hidden === 1 ? "" : "s"} hidden from house standings.`
             : ""}
