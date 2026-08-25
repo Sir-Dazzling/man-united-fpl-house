@@ -2,6 +2,7 @@ import {
   getAllClassicStandings,
   getAllH2hStandings,
   getCurrentGameweek,
+  getEntryBadgeUrl,
   getGameweeksInMonth,
   getGwPoints,
   getH2hMatchesForEvent,
@@ -32,6 +33,7 @@ export type ResolvedWinner = {
   metricLabel: string;
   metricValue: number;
   split: boolean;
+  badgeUrl?: string | null;
 };
 
 export type FraudResult = {
@@ -42,7 +44,24 @@ export type FraudResult = {
   metricLabel: string;
   metricValue: number;
   roast: string;
+  badgeUrl?: string | null;
 };
+
+async function attachBadgeUrls<T extends { entryId: number }>(
+  items: T[],
+): Promise<(T & { badgeUrl: string | null })[]> {
+  const uniqueIds = [...new Set(items.map((i) => i.entryId))];
+  const badges = new Map<number, string | null>();
+  await Promise.all(
+    uniqueIds.map(async (id) => {
+      badges.set(id, await getEntryBadgeUrl(id));
+    }),
+  );
+  return items.map((item) => ({
+    ...item,
+    badgeUrl: badges.get(item.entryId) ?? null,
+  }));
+}
 
 type Candidate = {
   entryId: number;
@@ -274,10 +293,18 @@ export async function resolveClassicWeekly(gw: number): Promise<{
   }
 
   const candidates = await withTransfers(rows, gw);
+  const [winners, fraud] = await Promise.all([
+    attachBadgeUrls(
+      applyTransferTieBreakAndPrizes(candidates, PRIZES.weekly),
+    ),
+    attachBadgeUrls(
+      pickFraud(candidates, "Certified brick — lowest GW haul"),
+    ),
+  ]);
   return {
     category: "classic_weekly",
-    winners: applyTransferTieBreakAndPrizes(candidates, PRIZES.weekly),
-    fraud: pickFraud(candidates, "Certified brick — lowest GW haul"),
+    winners,
+    fraud,
     emptyReason: null,
   };
 }
@@ -380,10 +407,18 @@ export async function resolveH2hWeekly(gw: number): Promise<{
   const winnersC = await withTransfers(winnerRows, gw);
   const losersC = await withTransfers(loserRows, gw);
 
+  const [winners, fraud] = await Promise.all([
+    attachBadgeUrls(
+      applyTransferTieBreakAndPrizes(winnersC, PRIZES.weekly),
+    ),
+    attachBadgeUrls(
+      pickFraud(losersC, "Got cooked — worst H2H loss margin"),
+    ),
+  ]);
   return {
     category: "h2h_weekly",
-    winners: applyTransferTieBreakAndPrizes(winnersC, PRIZES.weekly),
-    fraud: pickFraud(losersC, "Got cooked — worst H2H loss margin"),
+    winners,
+    fraud,
     emptyReason: null,
   };
 }

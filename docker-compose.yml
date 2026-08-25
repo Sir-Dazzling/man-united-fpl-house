@@ -9,7 +9,6 @@ services:
       ADMIN_EMAIL: "${ADMIN_EMAIL:-admin@fanhouse.local}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD:-changeme}"
       AUTH_SECRET: "${AUTH_SECRET:-mC7swStTfTmAE6GPEMJ0QoHvcY2Ll9YuXReW9oblJak=}"
-      DATABASE_URL: "file:/app/data/fanhouse.db"
-    volumes:
-      - ./data:/app/data
+      DATABASE_URL: "${DATABASE_URL}"
+      DIRECT_URL: "${DIRECT_URL}"
     restart: unless-stopped
