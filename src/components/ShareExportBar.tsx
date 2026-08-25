@@ -5,6 +5,40 @@ import { toPng } from "html-to-image";
 
 const EXPORT_PAD_PX = 40;
 
+/** Canvas can't paint oklch()/lab() from Tailwind v4 — bake computed rgb onto the clone. */
+function bakeComputedColors(sourceRoot: HTMLElement, cloneRoot: HTMLElement) {
+  const props = [
+    "color",
+    "background-color",
+    "border-top-color",
+    "border-right-color",
+    "border-bottom-color",
+    "border-left-color",
+    "outline-color",
+    "text-decoration-color",
+    "fill",
+    "stroke",
+    "box-shadow",
+    "text-shadow",
+    "opacity",
+    "background-image",
+  ] as const;
+
+  const sources = [sourceRoot, ...sourceRoot.querySelectorAll<HTMLElement>("*")];
+  const clones = [cloneRoot, ...cloneRoot.querySelectorAll<HTMLElement>("*")];
+
+  for (let i = 0; i < sources.length; i += 1) {
+    const src = sources[i];
+    const clone = clones[i];
+    if (!src || !clone) continue;
+    const computed = window.getComputedStyle(src);
+    for (const prop of props) {
+      const value = computed.getPropertyValue(prop);
+      if (value) clone.style.setProperty(prop, value);
+    }
+  }
+}
+
 export function ShareExportBar({
   captureId,
   csvFilename,
@@ -42,30 +76,45 @@ export function ShareExportBar({
     setBusy(true);
     setMsg(null);
 
-    const wrapper = document.createElement("div");
-    wrapper.style.cssText = [
-      "position:fixed",
-      "left:-10000px",
-      "top:0",
-      `padding:${EXPORT_PAD_PX}px`,
-      "background:#0b0b0c",
-      "box-sizing:border-box",
-      `width:${Math.max(node.scrollWidth, node.clientWidth) + EXPORT_PAD_PX * 2}px`,
-    ].join(";");
+    const hidden: Array<{ el: HTMLElement; display: string }> = [];
+    node
+      .querySelectorAll<HTMLElement>("[data-export-exclude], form")
+      .forEach((el) => {
+        hidden.push({ el, display: el.style.display });
+        el.style.display = "none";
+      });
 
-    const clone = node.cloneNode(true) as HTMLElement;
-    clone.querySelectorAll("[data-export-exclude]").forEach((el) => el.remove());
-    clone.querySelectorAll("form").forEach((el) => el.remove());
-
-    wrapper.appendChild(clone);
-    document.body.appendChild(wrapper);
+    const prev = {
+      padding: node.style.padding,
+      background: node.style.backgroundColor,
+      boxSizing: node.style.boxSizing,
+    };
+    node.style.padding = `${EXPORT_PAD_PX}px`;
+    node.style.backgroundColor = "#0b0b0c";
+    node.style.boxSizing = "border-box";
 
     try {
-      const dataUrl = await toPng(wrapper, {
+      // Warm-up pass helps Safari / Chrome paint fonts before serialize
+      await toPng(node, {
+        cacheBust: true,
+        pixelRatio: 1,
+        backgroundColor: "#0b0b0c",
+        includeQueryParams: true,
+        onclone: (_doc, cloned) => {
+          bakeComputedColors(node, cloned as HTMLElement);
+        },
+      });
+
+      const dataUrl = await toPng(node, {
         cacheBust: true,
         pixelRatio: 2,
         backgroundColor: "#0b0b0c",
+        includeQueryParams: true,
+        onclone: (_doc, cloned) => {
+          bakeComputedColors(node, cloned as HTMLElement);
+        },
       });
+
       const a = document.createElement("a");
       a.href = dataUrl;
       a.download = `${captureId}.png`;
@@ -74,7 +123,12 @@ export function ShareExportBar({
     } catch {
       setMsg("Screenshot failed — try again");
     } finally {
-      wrapper.remove();
+      node.style.padding = prev.padding;
+      node.style.backgroundColor = prev.background;
+      node.style.boxSizing = prev.boxSizing;
+      for (const { el, display } of hidden) {
+        el.style.display = display;
+      }
       setBusy(false);
     }
   }, [captureId]);
