@@ -1,0 +1,15 @@
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      FPL_CLASSIC_LEAGUE_ID: "539533"
+      FPL_H2H_LEAGUE_ID: "539596"
+      ADMIN_EMAIL: "${ADMIN_EMAIL:-admin@fanhouse.local}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-changeme}"
+      AUTH_SECRET: "${AUTH_SECRET:-mC7swStTfTmAE6GPEMJ0QoHvcY2Ll9YuXReW9oblJak=}"
+      DATABASE_URL: "file:/app/data/fanhouse.db"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

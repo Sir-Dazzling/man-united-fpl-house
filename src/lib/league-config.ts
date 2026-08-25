@@ -1,21 +1,26 @@
 export const LEAGUE = {
   name: "Man United Fan House League",
-  tagline: "Classic + H2H · Vibes, Banter & Cash",
+  tagline: "Group chat energy, real Naira prizes.",
   classic: {
     label: "Classic",
     code: "0bcw9z",
-    /** Set once resolved from FPL (league ID, not invite code). */
-    leagueId: null as number | null,
+    leagueId: Number(process.env.FPL_CLASSIC_LEAGUE_ID ?? 539533),
   },
   h2h: {
     label: "Head-to-Head",
     code: "so9nz7",
-    leagueId: null as number | null,
+    leagueId: Number(process.env.FPL_H2H_LEAGUE_ID ?? 539596),
   },
 } as const;
 
 export const PRIZES = {
   weekly: [
+    { place: 1, amountNgn: 5_000 },
+    { place: 2, amountNgn: 3_000 },
+    { place: 3, amountNgn: 2_000 },
+    { place: 4, amountNgn: 1_000 },
+  ],
+  monthlyTable: [
     { place: 1, amountNgn: 5_000 },
     { place: 2, amountNgn: 3_000 },
     { place: 3, amountNgn: 2_000 },
@@ -41,9 +46,40 @@ export const PRIZES = {
   ],
 } as const;
 
+export type PayoutCategory =
+  | "classic_weekly"
+  | "h2h_weekly"
+  | "classic_monthly"
+  | "h2h_monthly"
+  | "motm_classic"
+  | "motm_h2h"
+  | "eos"
+  | "h2h_special";
+
+export const PAYOUT_CATEGORIES: Array<{
+  value: PayoutCategory;
+  label: string;
+}> = [
+  { value: "classic_weekly", label: "Classic weekly" },
+  { value: "h2h_weekly", label: "H2H weekly" },
+  { value: "classic_monthly", label: "Classic monthly table" },
+  { value: "h2h_monthly", label: "H2H monthly table" },
+  { value: "motm_classic", label: "Manager of the Month (Classic)" },
+  { value: "motm_h2h", label: "Manager of the Month (H2H)" },
+  { value: "eos", label: "End of season" },
+  { value: "h2h_special", label: "H2H special" },
+];
+
 export function formatNgn(amount: number): string {
-  if (amount >= 1000) {
+  if (amount >= 1000 && amount % 1000 === 0) {
     return `₦${amount / 1000}k`;
   }
   return `₦${amount.toLocaleString("en-NG")}`;
+}
+
+export function ordinal(n: number): string {
+  if (n === 1) return "st";
+  if (n === 2) return "nd";
+  if (n === 3) return "rd";
+  return "th";
 }

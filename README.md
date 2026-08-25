@@ -1,49 +1,44 @@
 # Man United Fan House League
 
-Private FPL analytics + payouts platform for the **Man United Fan House League** — Classic and Head-to-Head, weekly cash tracking, and season earnings.
+FPL Classic + H2H analytics, cash desks, fraud banter, and earnings for the Man United Fan House League.
 
-## League codes (case-sensitive)
+## Quick links
 
-| League  | Code     |
-| ------- | -------- |
-| Classic | `0bcw9z` |
-| H2H     | `so9nz7` |
+| Page | Purpose |
+| ---- | ------- |
+| `/` | Vibey home — this week teaser, how money works, join codes |
+| `/rules` | House rules + full ranking algorithms |
+| `/classic` `/h2h` | Live standings + PNG/CSV export |
+| `/winners` | Weekly podium + fraud hall of shame |
+| `/motm` | MOTM races + monthly table confirms |
+| `/earnings` | Paid vs outstanding cash board |
+| `/admin/gameweek` | Confirm weekly winners & mark paid |
 
-Set numeric FPL `leagueId` values in [`src/lib/league-config.ts`](src/lib/league-config.ts) after resolving them from FPL (invite code ≠ league ID).
+## Algorithms (summary)
 
-## Prize summary
+- **Classic weekly:** top GW points → transfers → split  
+- **H2H weekly:** must win, then best margin → transfers → split  
+- **Monthly table:** cumulative season top 4 at month end  
+- **MOTM Classic:** sum of points in that month  
+- **MOTM H2H:** month H2H pts (3/1/0) then GD  
+- **Fraud:** banter only (worst week/month)
 
-- **Weekly (Classic & H2H):** 1st ₦5k · 2nd ₦3k · 3rd ₦2k · 4th ₦1k
-- **Manager of the Month:** Classic ₦10k · H2H ₦10k
-- **End of season (both):** 1st ₦50k · 2nd ₦30k · 3rd ₦20k · 4th ₦10k
-- **H2H specials:** Most Goals Scored ₦10k · Fewest Goals Conceded ₦10k
-
-## Stack
-
-- Next.js (App Router) + TypeScript + Tailwind CSS
-- Public FPL API client stubs in `src/lib/fpl/`
-
-## Routes
-
-- `/` — landing, join codes, prize pool, announcement poster
-- `/classic` — Classic standings (wired next)
-- `/h2h` — H2H standings + PF/PA specials (wired next)
-- `/earnings` — who earned the most
-- `/admin/payouts` — log weekly winners
+League IDs: Classic `539533` · H2H `539596`  
+Codes: `0bcw9z` / `so9nz7` (case-sensitive)
 
 ## Dev
 
 ```bash
+cp .env.example .env
 npm install
+npm run db:setup
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Admin default: `admin@fanhouse.local` / `changeme`
 
-## Next up
-
-- Resolve Classic / H2H league IDs and fetch live standings
-- Persist payouts (DB) and drive the earnings leaderboard
-- Admin auth + gameweek sync
+```bash
+docker compose up --build
+```
 
 Not affiliated with Manchester United FC or the Premier League. GGMU.

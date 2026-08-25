@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bebas_Neue, DM_Sans, JetBrains_Mono } from "next/font/google";
 import { AppNav } from "@/components/AppNav";
+import { Providers } from "@/components/Providers";
 import "./globals.css";
 
 const display = Bebas_Neue({
@@ -36,12 +37,17 @@ export default function RootLayout({
       className={`${display.variable} ${body.variable} ${mono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-ink text-foreground">
-        <AppNav />
-        <main className="flex-1">{children}</main>
-        <footer className="border-t border-white/10 py-6 text-center text-xs text-white/40">
-          Man United Fan House League · Not affiliated with Manchester United or
-          the Premier League · GGMU
-        </footer>
+        <Providers>
+          <AppNav />
+          <main className="flex-1">{children}</main>
+          <footer className="border-t border-white/10 py-6 text-center text-xs text-white/40">
+            Man United Fan House League ·{" "}
+            <a href="/rules" className="text-gold/80 hover:text-gold">
+              Rules
+            </a>{" "}
+            · Not affiliated with Manchester United or the Premier League · GGMU
+          </footer>
+        </Providers>
       </body>
     </html>
   );

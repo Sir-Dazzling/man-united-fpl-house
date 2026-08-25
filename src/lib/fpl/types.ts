@@ -2,9 +2,26 @@ export type FplBootstrapStatic = {
   events: Array<{
     id: number;
     name: string;
+    deadline_time: string;
     is_current: boolean;
     finished: boolean;
   }>;
+  teams: Array<{
+    id: number;
+    name: string;
+    short_name: string;
+    code: number;
+  }>;
+};
+
+export type FplEntry = {
+  id: number;
+  name: string;
+  player_first_name: string;
+  player_last_name: string;
+  favourite_team: number | null;
+  /** Custom FPL team badge URL, "Pending", or null */
+  club_badge_src: string | null;
 };
 
 export type ClassicStandingRow = {
@@ -43,7 +60,8 @@ export type H2hStandingRow = {
   matches_drawn: number;
   matches_lost: number;
   points_for: number;
-  points_against: number;
+  /** Not always present on FPL standings payload — we compute from matches. */
+  points_against?: number;
   total: number;
 };
 
@@ -69,4 +87,24 @@ export type EntryHistory = {
     event_transfers: number;
     event_transfers_cost: number;
   }>;
+};
+
+export type H2hMatchRow = {
+  id: number;
+  event: number;
+  entry_1_entry: number | null;
+  entry_1_name: string | null;
+  entry_1_player_name: string | null;
+  entry_1_points: number | null;
+  entry_2_entry: number | null;
+  entry_2_name: string | null;
+  entry_2_player_name: string | null;
+  entry_2_points: number | null;
+  is_bye: boolean;
+};
+
+export type H2hMatchesPage = {
+  has_next: boolean;
+  page: number;
+  results: H2hMatchRow[];
 };

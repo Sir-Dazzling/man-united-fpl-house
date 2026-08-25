@@ -39,3 +39,40 @@ body {
     radial-gradient(ellipse 60% 40% at 100% 0%, rgba(212, 175, 55, 0.12), transparent),
     linear-gradient(180deg, #120809 0%, #0b0b0c 55%);
 }
+
+.motm-card {
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.motm-card-bg {
+  background:
+    radial-gradient(circle at 50% 28%, rgba(218, 41, 28, 0.45), transparent 55%),
+    radial-gradient(circle at 90% 10%, rgba(212, 175, 55, 0.18), transparent 40%),
+    linear-gradient(165deg, #3a0c0c 0%, #140808 42%, #0b0b0c 100%);
+}
+
+.motm-card-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+  background: repeating-linear-gradient(
+    -32deg,
+    transparent,
+    transparent 14px,
+    rgba(255, 255, 255, 0.08) 14px,
+    rgba(255, 255, 255, 0.08) 15px
+  );
+  pointer-events: none;
+}
+
+.motm-card-bg--locked {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(80, 80, 90, 0.35), transparent 55%),
+    linear-gradient(165deg, #1a1a1e 0%, #0e0e10 55%, #0b0b0c 100%);
+}
+
+.motm-crest {
+  backdrop-filter: blur(6px);
+}

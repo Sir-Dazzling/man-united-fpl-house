@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         String   @default("ADMIN")
+  createdAt    DateTime @default(now())
+  payouts      Payout[]
+}
+
+model Payout {
+  id            String    @id @default(cuid())
+  gameweek      Int?
+  category      String
+  placeLabel    String
+  managerName   String
+  entryId       Int?
+  amountNgn     Int
+  status        String    @default("announced")
+  paidAt        DateTime?
+  transfersUsed Int?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  createdById   String?
+  createdBy     User?     @relation(fields: [createdById], references: [id])
+
+  @@index([category, gameweek])
+  @@index([status])
+}
+
+/** Flagged / suspended FPL entries excluded from standings & prize calcs. */
+model Suspension {
+  id          String   @id @default(cuid())
+  entryId     Int
+  managerName String
+  teamName    String   @default("")
+  /** classic | h2h | both */
+  scope       String
+  reason      String   @default("")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  @@unique([entryId, scope])
+  @@index([active, scope])
+}

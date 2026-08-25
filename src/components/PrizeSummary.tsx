@@ -48,17 +48,28 @@ export function PrizeSummary() {
         <h3 className="font-display text-lg text-white">Manager of the Month</h3>
         <ul className="mt-3 space-y-2 text-sm">
           <li className="flex justify-between">
-            <span className="text-white/70">Classic top scorer</span>
+            <span className="text-white/70">Classic (month points)</span>
             <span className="font-semibold text-gold">
               {formatNgn(PRIZES.managerOfTheMonth.classic)}
             </span>
           </li>
           <li className="flex justify-between">
-            <span className="text-white/70">H2H most points</span>
+            <span className="text-white/70">H2H (match pts then GD)</span>
             <span className="font-semibold text-gold">
               {formatNgn(PRIZES.managerOfTheMonth.h2h)}
             </span>
           </li>
+        </ul>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+        <h3 className="font-display text-lg text-white">Monthly table (both)</h3>
+        <p className="mt-1 text-xs text-white/45">
+          Cumulative standings snapshot at month end
+        </p>
+        <ul className="mt-3">
+          {PRIZES.monthlyTable.map((row) => (
+            <PlaceRow key={`month-${row.place}`} {...row} />
+          ))}
         </ul>
       </div>
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
