@@ -73,7 +73,7 @@ export default function RulesPage() {
         />
         <RuleBlock
           title="Monthly table (cash)"
-          body="Season H2H standings snapshot at month end — pay cumulative 1st–4th. Not available until the month’s last GW has been played."
+          body="Season H2H standings snapshot at month end — pay cumulative 1st–4th. Tie-break: H2H pts, then GS, then GD, then transfers / split. Not available until the month’s last GW has been played."
         />
         <RuleBlock
           title="Manager of the Month (cash)"

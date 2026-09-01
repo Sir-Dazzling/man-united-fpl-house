@@ -9,9 +9,10 @@ export type H2hStandingsPayload = {
   results: H2hStandingRow[];
   hidden: number;
   code: string;
+  throughGw: number;
   gw: { id: number; name: string; finished: boolean } | null;
-  topPf: H2hStandingRow | null;
-  topPa: H2hStandingRow | null;
+  topGs: H2hStandingRow | null;
+  topGc: H2hStandingRow | null;
 };
 
 export function useH2hStandings() {

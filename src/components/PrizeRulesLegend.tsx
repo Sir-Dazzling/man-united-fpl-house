@@ -15,7 +15,7 @@ export function PrizeRulesLegend({ compact = false }: { compact?: boolean }) {
           </li>
           <li>
             <strong className="text-white">Monthly table:</strong> top of the season table at
-            month end (shown only after that month’s last GW is played)
+            month end (H2H: pts → GS → GD → transfers). Shown only after that month’s last GW is played
           </li>
           <li>
             <strong className="text-white">MOTM:</strong> one winner per track, revealed after the month’s last GW (Classic points /

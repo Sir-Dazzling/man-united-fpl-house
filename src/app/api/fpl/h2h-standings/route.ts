@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   getAllH2hStandings,
   getCurrentGameweek,
+  getH2hStandingsThroughGw,
 } from "@/lib/fpl/client";
 import { LEAGUE } from "@/lib/league-config";
 import type { H2hStandingRow } from "@/lib/fpl/types";
@@ -14,9 +15,10 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const [{ league, results: raw }, gw, suspended] = await Promise.all([
+    const [{ league, results: raw }, gw, throughGw, suspended] = await Promise.all([
       getAllH2hStandings(LEAGUE.h2h.leagueId),
       getCurrentGameweek(),
+      getH2hStandingsThroughGw(),
       getSuspendedEntryIds("h2h"),
     ]);
     const results = filterOutSuspended(raw, suspended);
@@ -39,9 +41,12 @@ export async function GET() {
       results,
       hidden: raw.length - results.length,
       code: LEAGUE.h2h.code,
+      throughGw,
       gw: gw
         ? { id: gw.id, name: gw.name, finished: gw.finished }
         : null,
+      topGs: topPf,
+      topGc: topPa,
       topPf,
       topPa,
     });

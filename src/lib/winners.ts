@@ -70,10 +70,42 @@ export type Candidate = {
   /** Higher is better for ranking before fraud inversion */
   sortPrimary: number;
   sortSecondary?: number;
+  sortTertiary?: number;
   transfersUsed: number;
   metricLabel: string;
   metricValue: number;
 };
+
+function compareCandidatesDesc(a: Candidate, b: Candidate): number {
+  if (b.sortPrimary !== a.sortPrimary) return b.sortPrimary - a.sortPrimary;
+  const as = a.sortSecondary ?? 0;
+  const bs = b.sortSecondary ?? 0;
+  if (bs !== as) return bs - as;
+  const at = a.sortTertiary ?? 0;
+  const bt = b.sortTertiary ?? 0;
+  if (bt !== at) return bt - at;
+  return a.transfersUsed - b.transfersUsed;
+}
+
+function compareCandidatesAsc(a: Candidate, b: Candidate): number {
+  if (a.sortPrimary !== b.sortPrimary) return a.sortPrimary - b.sortPrimary;
+  const as = a.sortSecondary ?? 0;
+  const bs = b.sortSecondary ?? 0;
+  if (as !== bs) return as - bs;
+  const at = a.sortTertiary ?? 0;
+  const bt = b.sortTertiary ?? 0;
+  if (at !== bt) return at - bt;
+  return b.transfersUsed - a.transfersUsed;
+}
+
+function candidatesFullyTied(a: Candidate, b: Candidate): boolean {
+  return (
+    a.sortPrimary === b.sortPrimary &&
+    (a.sortSecondary ?? 0) === (b.sortSecondary ?? 0) &&
+    (a.sortTertiary ?? 0) === (b.sortTertiary ?? 0) &&
+    a.transfersUsed === b.transfersUsed
+  );
+}
 
 type PrizeBand = { place: number; amountNgn: number };
 
@@ -91,13 +123,7 @@ export function applyTransferTieBreakAndPrizes(
 ): ResolvedWinner[] {
   if (candidates.length === 0 || prizes.length === 0) return [];
 
-  const sorted = [...candidates].sort((a, b) => {
-    if (b.sortPrimary !== a.sortPrimary) return b.sortPrimary - a.sortPrimary;
-    const as = a.sortSecondary ?? 0;
-    const bs = b.sortSecondary ?? 0;
-    if (bs !== as) return bs - as;
-    return a.transfersUsed - b.transfersUsed;
-  });
+  const sorted = [...candidates].sort(compareCandidatesDesc);
 
   const winners: ResolvedWinner[] = [];
   let i = 0;
@@ -108,11 +134,7 @@ export function applyTransferTieBreakAndPrizes(
     let j = i + 1;
     while (j < sorted.length) {
       const cur = sorted[j];
-      const samePrimary = cur.sortPrimary === head.sortPrimary;
-      const sameSecondary =
-        (cur.sortSecondary ?? 0) === (head.sortSecondary ?? 0);
-      const sameTransfers = cur.transfersUsed === head.transfersUsed;
-      if (samePrimary && sameSecondary && sameTransfers) {
+      if (candidatesFullyTied(cur, head)) {
         j += 1;
       } else {
         break;
@@ -167,22 +189,11 @@ export function pickFraud(
 ): FraudResult[] {
   if (candidates.length === 0) return [];
 
-  // Worst = lowest primary, then lowest secondary, then MORE transfers
-  const sorted = [...candidates].sort((a, b) => {
-    if (a.sortPrimary !== b.sortPrimary) return a.sortPrimary - b.sortPrimary;
-    const as = a.sortSecondary ?? 0;
-    const bs = b.sortSecondary ?? 0;
-    if (as !== bs) return as - bs;
-    return b.transfersUsed - a.transfersUsed;
-  });
+  // Worst = lowest primary, then secondary, tertiary, then MORE transfers
+  const sorted = [...candidates].sort(compareCandidatesAsc);
 
   const head = sorted[0];
-  const group = sorted.filter(
-    (c) =>
-      c.sortPrimary === head.sortPrimary &&
-      (c.sortSecondary ?? 0) === (head.sortSecondary ?? 0) &&
-      c.transfersUsed === head.transfersUsed,
-  );
+  const group = sorted.filter((c) => candidatesFullyTied(c, head));
 
   return group.map((c) => ({
     entryId: c.entryId,
@@ -448,7 +459,8 @@ export async function resolveH2hMonthlyTable(
     managerName: r.player_name,
     teamName: r.entry_name,
     sortPrimary: r.total,
-    sortSecondary: r.points_for - (r.points_against ?? 0),
+    sortSecondary: r.points_for,
+    sortTertiary: r.points_for - (r.points_against ?? 0),
     metricLabel: "H2H pts",
     metricValue: r.total,
   }));

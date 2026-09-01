@@ -41,9 +41,10 @@ export function H2hStandingsClient() {
     );
   }
 
-  const { league, results, hidden, code, gw, topPf, topPa } = data;
+  const { league, results, hidden, code, gw, throughGw, topGs, topGc } = data;
+  const gsGcLive = gw != null && !gw.finished && throughGw < gw.id;
   const csvRows = [
-    ["rank", "manager", "team", "wdl", "pf", "pa", "gd", "pts"],
+    ["rank", "manager", "team", "wdl", "gs", "gc", "gd", "pts"],
     ...results.map((r) => [
       String(r.rank),
       r.player_name,
@@ -92,17 +93,17 @@ export function H2hStandingsClient() {
         <div className="grid gap-4 sm:grid-cols-2">
           <SpecialCard
             title="Most Goals Scored"
-            subtitle="Season PF special (EOS)"
-            manager={topPf?.player_name}
-            value={topPf ? `${topPf.points_for} PF` : "—"}
+            subtitle="Season GS special (EOS)"
+            manager={topGs?.player_name}
+            value={topGs ? `${topGs.points_for} GS` : "—"}
           />
           <SpecialCard
             title="Fewest Goals Conceded"
-            subtitle="Season PA special (EOS)"
-            manager={topPa?.player_name}
+            subtitle="Season GC special (EOS)"
+            manager={topGc?.player_name}
             value={
-              topPa != null
-                ? `${topPa.points_against ?? 0} PA`
+              topGc != null
+                ? `${topGc.points_against ?? 0} GC`
                 : "—"
             }
           />
@@ -127,19 +128,19 @@ export function H2hStandingsClient() {
               key: "manager",
               header: "Manager",
               render: (row) => {
-                const isPf = topPf?.id === row.id;
-                const isPa = topPa?.id === row.id;
+                const isGs = topGs?.id === row.id;
+                const isGc = topGc?.id === row.id;
                 return (
                   <span>
                     {row.player_name}
-                    {isPf ? (
+                    {isGs ? (
                       <span className="ml-2 text-[10px] uppercase tracking-wider text-gold">
-                        PF lead
+                        GS lead
                       </span>
                     ) : null}
-                    {isPa ? (
+                    {isGc ? (
                       <span className="ml-2 text-[10px] uppercase tracking-wider text-emerald-400">
-                        PA lead
+                        GC lead
                       </span>
                     ) : null}
                   </span>
@@ -164,16 +165,16 @@ export function H2hStandingsClient() {
               ),
             },
             {
-              key: "pf",
-              header: "PF",
+              key: "gs",
+              header: "GS",
               align: "right",
               render: (row) => (
                 <span className="tabular-nums">{row.points_for}</span>
               ),
             },
             {
-              key: "pa",
-              header: "PA",
+              key: "gc",
+              header: "GC",
               align: "right",
               render: (row) => (
                 <span className="tabular-nums">{row.points_against ?? 0}</span>
@@ -213,8 +214,12 @@ export function H2hStandingsClient() {
           ]}
         />
         <p className="text-xs text-white/40">
-          Weekly H2H cash = win your match then best margin — not this season
-          table alone. Monthly table cash uses this cumulative rank.
+          Rank follows FPL (pts → GS → GD). Weekly H2H cash = win your match
+          then best margin. Monthly table cash uses the same tie-break as this
+          table.
+          {gsGcLive
+            ? ` GS, GC and GD reflect completed gameweeks through GW${throughGw}.`
+            : ""}
           {hidden > 0
             ? ` · ${hidden} suspended manager${hidden === 1 ? "" : "s"} hidden from house standings.`
             : ""}

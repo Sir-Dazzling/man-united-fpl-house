@@ -133,6 +133,17 @@ export async function getFinishedGameweeks() {
   return data.events.filter((e) => e.finished);
 }
 
+/**
+ * Gameweek scope for H2H GS/GC/GD — matches FPL standings API, which only
+ * includes finished gameweeks until the current GW is complete.
+ */
+export async function getH2hStandingsThroughGw(): Promise<number> {
+  const current = await getCurrentGameweek();
+  if (current?.finished) return current.id;
+  const finished = await getFinishedGameweeks();
+  return finished.at(-1)?.id ?? 1;
+}
+
 export async function getGameweeksInMonth(year: number, monthIndex: number) {
   const data = await getBootstrapStatic();
   return data.events.filter((e) => {
@@ -204,8 +215,7 @@ export async function getAllH2hStandings(leagueId: number): Promise<{
     hasNext = next.standings.has_next;
   }
 
-  const gw = await getCurrentGameweek();
-  const throughGw = gw?.id ?? 1;
+  const throughGw = await getH2hStandingsThroughGw();
   const paByEntry = await computeH2hPointsAgainst(leagueId, throughGw);
   const enriched = results.map((row) => ({
     ...row,
