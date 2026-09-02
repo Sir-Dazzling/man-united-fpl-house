@@ -2,11 +2,13 @@
 
 import { useFormStatus } from "react-dom";
 import { formatNgn } from "@/lib/league-config";
+import { markPayoutPaid } from "@/lib/payout-actions";
 import {
   getPayoutWorkflowPhase,
   sumPayoutAmount,
   type PayoutWorkflowRow,
 } from "@/lib/payout-workflow";
+import { MarkPayoutPaidButton } from "@/components/MarkPayoutPaidButton";
 
 type AdminPayoutWorkflowProps = {
   trackLabel: string;
@@ -35,7 +37,9 @@ export function AdminPayoutWorkflow({
   const phase = getPayoutWorkflowPhase(payouts);
   const total = sumPayoutAmount(payouts);
   const paidCount = payouts.filter((p) => p.status === "paid").length;
+  const dueCount = payouts.length - paidCount;
   const showPayStep = Boolean(markPaidAction);
+  const partiallyPaid = phase === "announced" && paidCount > 0;
 
   return (
     <div
@@ -55,7 +59,13 @@ export function AdminPayoutWorkflow({
           </p>
           <p className="mt-1 font-semibold text-white">{trackLabel}</p>
         </div>
-        <PhaseBadge phase={phase} showPayStep={showPayStep} />
+        <PhaseBadge
+          phase={phase}
+          showPayStep={showPayStep}
+          partiallyPaid={partiallyPaid}
+          paidCount={paidCount}
+          totalCount={payouts.length}
+        />
       </div>
 
       <WorkflowSteps phase={phase} showPayStep={showPayStep} />
@@ -65,7 +75,7 @@ export function AdminPayoutWorkflow({
           {payouts.map((p) => (
             <li
               key={p.id}
-              className="flex items-center justify-between gap-3 text-sm"
+              className="flex flex-wrap items-center justify-between gap-2 text-sm"
             >
               <div className="min-w-0">
                 <span className="font-medium text-white">{p.managerName}</span>
@@ -76,6 +86,16 @@ export function AdminPayoutWorkflow({
                   {formatNgn(p.amountNgn)}
                 </span>
                 <StatusPill status={p.status} />
+                {showPayStep ? (
+                  p.status === "paid" ? (
+                    <MarkPayoutPaidButton paid />
+                  ) : (
+                    <form action={markPayoutPaid}>
+                      <input type="hidden" name="id" value={p.id} />
+                      <MarkPayoutPaidButton paid={false} />
+                    </form>
+                  )
+                ) : null}
               </div>
             </li>
           ))}
@@ -83,13 +103,16 @@ export function AdminPayoutWorkflow({
             <span>
               {paidCount}/{payouts.length} paid
               {total > 0 ? ` · ${formatNgn(total)} total` : ""}
+              {dueCount > 0 && paidCount > 0
+                ? ` · ${dueCount} still due`
+                : ""}
             </span>
           </li>
         </ul>
       ) : (
         <p className="mt-4 text-sm text-white/45">
           Confirm to log winners to the house ledger — then mark paid once
-          you&apos;ve sent the money.
+          you&apos;ve sent the money (one by one or all at once).
         </p>
       )}
 
@@ -116,6 +139,7 @@ export function AdminPayoutWorkflow({
               phase={phase}
               payoutCount={payouts.length}
               paidCount={paidCount}
+              dueCount={dueCount}
             />
           </form>
         ) : null}
@@ -136,15 +160,29 @@ function phaseToStepIndex(
 function PhaseBadge({
   phase,
   showPayStep,
+  partiallyPaid,
+  paidCount,
+  totalCount,
 }: {
   phase: ReturnType<typeof getPayoutWorkflowPhase>;
   showPayStep: boolean;
+  partiallyPaid: boolean;
+  paidCount: number;
+  totalCount: number;
 }) {
   if (phase === "paid") {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300">
         <CheckIcon className="h-3.5 w-3.5" />
         All paid
+      </span>
+    );
+  }
+  if (partiallyPaid) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-200">
+        <CashIcon className="h-3.5 w-3.5" />
+        {paidCount}/{totalCount} paid
       </span>
     );
   }
@@ -290,14 +328,16 @@ function MarkPaidButton({
   phase,
   payoutCount,
   paidCount,
+  dueCount,
 }: {
   phase: ReturnType<typeof getPayoutWorkflowPhase>;
   payoutCount: number;
   paidCount: number;
+  dueCount: number;
 }) {
   const { pending } = useFormStatus();
   const allPaid = phase === "paid";
-  const canPay = payoutCount > 0 && !allPaid;
+  const canPay = payoutCount > 0 && !allPaid && dueCount > 0;
 
   return (
     <button
@@ -324,7 +364,9 @@ function MarkPaidButton({
       ) : canPay ? (
         <>
           <CashIcon className="h-4 w-4" />
-          I&apos;ve paid them — mark paid
+          {paidCount > 0
+            ? `Mark remaining ${dueCount} as paid`
+            : "I've paid them all — mark paid"}
         </>
       ) : (
         <>Confirm winners first</>
