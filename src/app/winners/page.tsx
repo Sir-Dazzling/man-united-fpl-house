@@ -2,7 +2,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getCurrentGameweek, getSeasonGameweeks } from "@/lib/fpl/client";
 import { PAYOUT_CATEGORIES, formatNgn } from "@/lib/league-config";
+import { getSuspendedEntryIds } from "@/lib/suspensions";
 import { resolveClassicWeekly, resolveH2hWeekly } from "@/lib/winners";
+import { resolveWeeklyForDisplay } from "@/lib/weekly-lock";
 import { FraudCard, WinnersPreviewTable } from "@/components/WinnersPreview";
 import { PrizeRulesLegend } from "@/components/PrizeRulesLegend";
 import { ShareExportBar } from "@/components/ShareExportBar";
@@ -23,9 +25,10 @@ export default async function WinnersPage({
   const currentId = gwInfo?.id ?? 1;
   const gw = Number(params.gw ?? currentId);
 
-  const [classic, h2h, confirmed] = await Promise.all([
-    resolveClassicWeekly(gw),
-    resolveH2hWeekly(gw),
+  const [classic, h2h, confirmedRaw, suspendedClassic, suspendedH2h] =
+    await Promise.all([
+    resolveWeeklyForDisplay(gw, "classic_weekly", () => resolveClassicWeekly(gw)),
+    resolveWeeklyForDisplay(gw, "h2h_weekly", () => resolveH2hWeekly(gw)),
     prisma.payout.findMany({
       where: {
         gameweek: gw,
@@ -33,7 +36,16 @@ export default async function WinnersPage({
       },
       orderBy: { amountNgn: "desc" },
     }),
+    getSuspendedEntryIds("classic"),
+    getSuspendedEntryIds("h2h"),
   ]);
+
+  const confirmed = confirmedRaw.filter((p) => {
+    if (!p.entryId) return true;
+    if (p.category === "classic_weekly") return !suspendedClassic.has(p.entryId);
+    if (p.category === "h2h_weekly") return !suspendedH2h.has(p.entryId);
+    return true;
+  });
 
   const label = Object.fromEntries(
     PAYOUT_CATEGORIES.map((c) => [c.value, c.label]),

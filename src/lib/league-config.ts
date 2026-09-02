@@ -53,6 +53,8 @@ export type PayoutCategory =
   | "h2h_monthly"
   | "motm_classic"
   | "motm_h2h"
+  | "classic_eos"
+  | "h2h_eos"
   | "eos"
   | "h2h_special";
 
@@ -66,7 +68,9 @@ export const PAYOUT_CATEGORIES: Array<{
   { value: "h2h_monthly", label: "H2H monthly table" },
   { value: "motm_classic", label: "Manager of the Month (Classic)" },
   { value: "motm_h2h", label: "Manager of the Month (H2H)" },
-  { value: "eos", label: "End of season" },
+  { value: "classic_eos", label: "Classic end of season" },
+  { value: "h2h_eos", label: "H2H end of season" },
+  { value: "eos", label: "End of season (legacy)" },
   { value: "h2h_special", label: "H2H special" },
 ];
 

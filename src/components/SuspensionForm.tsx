@@ -40,9 +40,9 @@ export function SuspensionForm({ picks }: { picks: PickOption[] }) {
             (form.elements.namedItem("teamName") as HTMLInputElement).value =
               opt.dataset.team ?? "";
             const scope = form.elements.namedItem("scope") as HTMLSelectElement;
-            if (opt.dataset.league === "classic" || opt.dataset.league === "h2h") {
-              scope.value = opt.dataset.league;
-            }
+            // Default to both so MOTM / cash / standings all drop them unless
+            // admin deliberately narrows the scope.
+            scope.value = "both";
           }}
         >
           <option value="">— select manager —</option>
@@ -110,12 +110,12 @@ export function SuspensionForm({ picks }: { picks: PickOption[] }) {
         <select
           name="scope"
           required
-          defaultValue="classic"
+          defaultValue="both"
           className="w-full rounded-lg border border-white/10 bg-ink px-3 py-2 text-white outline-none focus:border-gold/50"
         >
+          <option value="both">Both leagues (recommended)</option>
           <option value="classic">Classic only</option>
           <option value="h2h">H2H only</option>
-          <option value="both">Both leagues</option>
         </select>
       </Field>
       <Field label="Reason (optional)">

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { formatNgn, LEAGUE, PRIZES } from "@/lib/league-config";
+import { LEAGUE } from "@/lib/league-config";
+import { PrizeSummary } from "@/components/PrizeSummary";
 
 export default function RulesPage() {
   return (
@@ -9,8 +10,9 @@ export default function RulesPage() {
         Rules &amp; ranking algorithms
       </h1>
       <p className="mt-3 text-white/60">
-        Read this before the group chat turns into VAR. FPL can show tied ranks;
-        cash places use our tie-breaks.
+        Cash places follow official FPL mini-league tie-breaks. Still tied after
+        all FPL rules → split evenly. H2H weekly cash is the one house-format
+        exception (win + margin).
       </p>
 
       <section className="mt-10 space-y-3">
@@ -25,16 +27,25 @@ export default function RulesPage() {
             accounts = instant DQ from all payouts.
           </li>
           <li>
-            <strong className="text-white">Tie-breakers:</strong> fewer total
-            transfers up to that point. Still tied → prize split evenly.
+            <strong className="text-white">Suspensions:</strong> DQ&apos;d managers
+            are hidden from standings and winners but still appear on H2H fixtures
+            (with a badge).
+          </li>
+          <li>
+            <strong className="text-white">Classic tie-break:</strong> Points →
+            fewest Transfers (Wildcard / Free Hit weeks excluded) → split.
+          </li>
+          <li>
+            <strong className="text-white">H2H tie-break:</strong> Pts → Pts For →
+            Pts Diff → fewest Pts Against → split.
+          </li>
+          <li>
+            <strong className="text-white">GW1 lock:</strong> GW1 weekly winners
+            confirmed and paid under prior rules remain final.
           </li>
           <li>
             <strong className="text-white">VAR:</strong> FPL deadlines are law.
             Admin edge cases are final.
-          </li>
-          <li>
-            <strong className="text-white">Claiming cash:</strong> when announced
-            in the group, DM account details — never drop them in the main chat.
           </li>
           <li>
             Join <strong className="text-white">both</strong> leagues: Classic{" "}
@@ -49,19 +60,23 @@ export default function RulesPage() {
         <h2 className="font-display text-2xl text-white">Classic algorithms</h2>
         <RuleBlock
           title="Weekly (cash)"
-          body="Highest GW points that gameweek. Top 4 get paid. Example: 80, 75, 75, 70 → transfers break the 75-75, then 4th is 70."
+          body="Highest GW Points that gameweek. Top 4 paid. Tie-break: Transfers that GW (WC/FH excluded) → split."
         />
         <RuleBlock
           title="Monthly table (cash)"
-          body="After the last finished GW of the calendar month, take the season Classic standings and pay cumulative 1st–4th. Hidden until that last GW has been played — not shown mid-month. This is who leads the league so far — not who scored most that month."
+          body="After the last finished GW of the calendar month, rank managers by GW Points summed only across that month's gameweeks. Top 4 paid. Tie-break: Transfers in those GWs only (WC/FH excluded) → split. Hidden until the month's last GW has been played."
         />
         <RuleBlock
           title="Manager of the Month (cash)"
-          body="Sum GW points only for gameweeks in that month. Highest total wins ₦10k."
+          body="Same month ranking as monthly table #1 — highest month points sum wins ₦10k."
+        />
+        <RuleBlock
+          title="End of season (cash)"
+          body="Season Points → fewest Transfers through GW38 (WC/FH excluded) → split. Top 4 paid."
         />
         <RuleBlock
           title="Fraud of the week / month (banter)"
-          body="Lowest GW points (week) or lowest month points sum (month). No cash — just shame. Tie → more transfers = bigger fraud."
+          body="Lowest GW Points (week) or lowest month points sum (month). No cash — just shame. Tie → more transfers = bigger fraud."
         />
       </section>
 
@@ -69,71 +84,34 @@ export default function RulesPage() {
         <h2 className="font-display text-2xl text-white">H2H algorithms</h2>
         <RuleBlock
           title="Weekly (cash)"
-          body="You must win your H2H match that GW. Among winners, best goal margin (your score − opponent). Top 4 paid. Draws/losses are out."
+          body="You must win your H2H match that GW. Among winners, best win margin (your score − opponent). Top 4 paid. Tie on margin → Transfers → split. Draws/losses are out."
         />
         <RuleBlock
           title="Monthly table (cash)"
-          body="Season H2H standings snapshot at month end — pay cumulative 1st–4th. Tie-break: H2H pts, then GS, then GD, then transfers / split. Not available until the month’s last GW has been played."
+          body="Stats from that month's H2H matches only: Pts (3/1/0) → Pts For → Pts Diff → fewest Pts Against → split. Top 4 paid after the month's last GW."
         />
         <RuleBlock
           title="Manager of the Month (cash)"
-          body="In that month: most H2H match points (3/1/0), then best total goal difference, then transfers / split."
+          body="Same month H2H ranking as monthly table #1 — ₦10k to 1st."
+        />
+        <RuleBlock
+          title="End of season (cash)"
+          body="Season H2H table: Pts → Pts For → Pts Diff → fewest Pts Against → split. Top 4 paid. Specials: Most Goals Scored (highest Pts For) and Fewest Goals Conceded (lowest Pts Against), ₦10k each."
         />
         <RuleBlock
           title="Fraud of the week / month (banter)"
-          body="Week: worst loss margin among losers. Month: fewest H2H pts, then worst GD. No cash."
+          body="Week: worst loss margin among losers. Month: fewest H2H Pts, then worst Pts Diff. No cash."
         />
       </section>
 
       <section className="mt-10">
         <h2 className="font-display text-2xl text-white">Prize amounts</h2>
-        <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 text-sm">
-          <table className="w-full text-left">
-            <thead className="bg-united/20 text-xs uppercase tracking-wider text-white/70">
-              <tr>
-                <th className="px-4 py-3">Track</th>
-                <th className="px-4 py-3 text-right">1st–4th / MOTM</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5 bg-panel/40 text-white/80">
-              <tr>
-                <td className="px-4 py-3">Weekly (each league)</td>
-                <td className="px-4 py-3 text-right text-gold">
-                  {PRIZES.weekly.map((p) => formatNgn(p.amountNgn)).join(" · ")}
-                </td>
-              </tr>
-              <tr>
-                <td className="px-4 py-3">Monthly table (each)</td>
-                <td className="px-4 py-3 text-right text-gold">
-                  {PRIZES.monthlyTable
-                    .map((p) => formatNgn(p.amountNgn))
-                    .join(" · ")}
-                </td>
-              </tr>
-              <tr>
-                <td className="px-4 py-3">Manager of the Month</td>
-                <td className="px-4 py-3 text-right text-gold">
-                  {formatNgn(PRIZES.managerOfTheMonth.classic)} each
-                </td>
-              </tr>
-              <tr>
-                <td className="px-4 py-3">End of season</td>
-                <td className="px-4 py-3 text-right text-gold">
-                  {PRIZES.endOfSeason
-                    .map((p) => formatNgn(p.amountNgn))
-                    .join(" · ")}
-                </td>
-              </tr>
-              <tr>
-                <td className="px-4 py-3">H2H season specials</td>
-                <td className="px-4 py-3 text-right text-gold">
-                  {PRIZES.h2hSpecials
-                    .map((p) => `${p.label} ${formatNgn(p.amountNgn)}`)
-                    .join(" · ")}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <p className="mt-2 text-sm text-white/55">
+          Amounts below include tie-break notes per track. Still tied after FPL
+          rules → split evenly.
+        </p>
+        <div className="mt-4">
+          <PrizeSummary />
         </div>
       </section>
 

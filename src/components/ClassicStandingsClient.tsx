@@ -8,6 +8,7 @@ import {
 } from "@/components/StandingsTable";
 import { PrizeRulesLegend } from "@/components/PrizeRulesLegend";
 import { ShareExportBar } from "@/components/ShareExportBar";
+import { CLASSIC_LABELS } from "@/lib/fpl-labels";
 
 export function ClassicStandingsClient() {
   const { data, isPending, isError, error } = useClassicStandings();
@@ -43,7 +44,7 @@ export function ClassicStandingsClient() {
 
   const { league, results, hidden, code, gw } = data;
   const csvRows = [
-    ["rank", "manager", "team", "gw", "total"],
+    ["rank", "manager", "team", "gw_points", "points"],
     ...results.map((r) => [
       String(r.rank),
       r.player_name,
@@ -113,7 +114,7 @@ export function ClassicStandingsClient() {
             },
             {
               key: "gw",
-              header: "GW",
+              header: CLASSIC_LABELS.gwPoints,
               align: "right",
               render: (row) => (
                 <span className="tabular-nums">{row.event_total}</span>
@@ -121,7 +122,7 @@ export function ClassicStandingsClient() {
             },
             {
               key: "total",
-              header: "Total",
+              header: CLASSIC_LABELS.points,
               align: "right",
               render: (row) => (
                 <span className="font-semibold tabular-nums text-gold">
@@ -132,9 +133,10 @@ export function ClassicStandingsClient() {
           ]}
         />
         <p className="text-xs text-white/40">
-          GW points from each manager&apos;s FPL entry history (same source as
-          Winners). Rank re-sorted by corrected season total. Weekly cash still
-          uses GW points + house tie-breaks.
+          GW points from each manager&apos;s FPL entry history. Rank follows FPL
+          ({CLASSIC_LABELS.points} → {CLASSIC_LABELS.transfers}, WC/FH
+          excluded). Weekly cash uses {CLASSIC_LABELS.gwPoints} + same
+          tie-break.
           {hidden > 0
             ? ` · ${hidden} suspended manager${hidden === 1 ? "" : "s"} hidden from house standings.`
             : ""}

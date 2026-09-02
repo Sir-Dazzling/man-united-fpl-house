@@ -1,10 +1,21 @@
 import { prisma } from "@/lib/db";
 import { formatNgn } from "@/lib/league-config";
+import { getSuspendedEntryIds } from "@/lib/suspensions";
 
 export const dynamic = "force-dynamic";
 
 export default async function EarningsPage() {
-  const payouts = await prisma.payout.findMany();
+  const [payouts, suspendedClassic, suspendedH2h] = await Promise.all([
+    prisma.payout.findMany(),
+    getSuspendedEntryIds("classic"),
+    getSuspendedEntryIds("h2h"),
+  ]);
+
+  const suspendedAll = new Set([...suspendedClassic, ...suspendedH2h]);
+
+  const visiblePayouts = payouts.filter(
+    (p) => !p.entryId || !suspendedAll.has(p.entryId),
+  );
 
   type Agg = {
     managerName: string;
@@ -16,7 +27,7 @@ export default async function EarningsPage() {
 
   const byManager = new Map<string, Agg>();
 
-  for (const p of payouts) {
+  for (const p of visiblePayouts) {
     const key = p.managerName.trim().toLowerCase();
     const existing = byManager.get(key) ?? {
       managerName: p.managerName,

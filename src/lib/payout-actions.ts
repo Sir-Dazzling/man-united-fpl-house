@@ -16,6 +16,8 @@ const createSchema = z.object({
     "h2h_monthly",
     "motm_classic",
     "motm_h2h",
+    "classic_eos",
+    "h2h_eos",
     "eos",
     "h2h_special",
   ]),

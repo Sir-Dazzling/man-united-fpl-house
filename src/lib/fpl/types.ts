@@ -87,6 +87,11 @@ export type EntryHistory = {
     event_transfers: number;
     event_transfers_cost: number;
   }>;
+  chips?: Array<{
+    name: string;
+    event: number;
+    time?: string;
+  }>;
 };
 
 export type H2hMatchRow = {

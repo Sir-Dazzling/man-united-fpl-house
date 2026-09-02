@@ -20,8 +20,10 @@ function revalidateSuspensionPaths() {
   revalidatePath("/winners");
   revalidatePath("/motm");
   revalidatePath("/admin/gameweek");
+  revalidatePath("/admin/eos");
   revalidatePath("/");
   revalidatePath("/earnings");
+  revalidatePath("/stats");
 }
 
 export type SuspendActionState = { ok: boolean; message: string };
@@ -48,6 +50,19 @@ export async function suspendEntry(
   }
 
   const data = parsed.data;
+
+  // Prefer a single "both" row over split classic/h2h rows for the same entry.
+  if (data.scope === "both") {
+    await prisma.suspension.updateMany({
+      where: {
+        entryId: data.entryId,
+        scope: { in: ["classic", "h2h"] },
+        active: true,
+      },
+      data: { active: false },
+    });
+  }
+
   await prisma.suspension.upsert({
     where: {
       entryId_scope: { entryId: data.entryId, scope: data.scope },
@@ -73,7 +88,7 @@ export async function suspendEntry(
   revalidateSuspensionPaths();
   return {
     ok: true,
-    message: `Suspended ${data.managerName} from ${data.scope}.`,
+    message: `Suspended ${data.managerName} from ${data.scope === "both" ? "Classic + H2H" : data.scope}. They are now excluded from MOTM, standings, and cash previews.`,
   };
 }
 

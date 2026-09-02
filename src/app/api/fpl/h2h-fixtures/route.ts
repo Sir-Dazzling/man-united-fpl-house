@@ -4,6 +4,7 @@ import {
   getSeasonGameweeks,
 } from "@/lib/fpl/client";
 import { LEAGUE } from "@/lib/league-config";
+import { getSuspendedEntryIds } from "@/lib/suspensions";
 
 export const dynamic = "force-dynamic";
 
@@ -17,12 +18,18 @@ export async function GET(req: Request) {
     const gw = Number(url.searchParams.get("gw") ?? current?.id ?? 1);
     const meta = gameweeks.find((g) => g.id === gw) ?? null;
     const matches = await getH2hMatchesForEvent(LEAGUE.h2h.leagueId, gw);
+    const suspendedH2h = await getSuspendedEntryIds("h2h");
+    const suspendedClassic = await getSuspendedEntryIds("classic");
+    const suspendedEntryIds = [
+      ...new Set([...suspendedH2h, ...suspendedClassic]),
+    ];
 
     return NextResponse.json({
       gw,
       meta,
       gameweeks,
       code: LEAGUE.h2h.code,
+      suspendedEntryIds,
       matches: matches.map((m) => ({
         id: m.id,
         isBye: m.is_bye,

@@ -199,7 +199,10 @@ export async function getAllClassicStandings(leagueId: number): Promise<{
   return { league: first.league, results };
 }
 
-export async function getAllH2hStandings(leagueId: number): Promise<{
+export async function getAllH2hStandings(
+  leagueId: number,
+  throughGw?: number,
+): Promise<{
   league: H2hStandingsPage["league"];
   results: H2hStandingRow[];
 }> {
@@ -215,8 +218,8 @@ export async function getAllH2hStandings(leagueId: number): Promise<{
     hasNext = next.standings.has_next;
   }
 
-  const throughGw = await getH2hStandingsThroughGw();
-  const paByEntry = await computeH2hPointsAgainst(leagueId, throughGw);
+  const scope = throughGw ?? (await getH2hStandingsThroughGw());
+  const paByEntry = await computeH2hPointsAgainst(leagueId, scope);
   const enriched = results.map((row) => ({
     ...row,
     points_against: paByEntry.get(row.entry) ?? row.points_against ?? 0,

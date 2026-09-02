@@ -4,6 +4,7 @@ import {
   getEntryBadgeUrl,
   getH2hMatchesForEvent,
 } from "@/lib/fpl/client";
+import { CLASSIC_LABELS, H2H_LABELS } from "@/lib/fpl-labels";
 import { LEAGUE } from "@/lib/league-config";
 import {
   filterOutSuspended,
@@ -90,7 +91,7 @@ export async function peekClassicGwLead(
     teamName: r.entry_name,
     points: r.event_total,
     opponentPoints: null,
-    metricLabel: "GW points",
+    metricLabel: CLASSIC_LABELS.gwPoints,
     metricValue: r.event_total,
     track: "classic" as const,
   }));
@@ -123,7 +124,7 @@ export async function peekH2hGwLead(
           teamName: m.entry_1_name ?? "",
           points: p1,
           opponentPoints: p2,
-          metricLabel: "Win margin",
+          metricLabel: H2H_LABELS.winMargin,
           metricValue: p1 - p2,
           track: "h2h",
         });
@@ -135,7 +136,7 @@ export async function peekH2hGwLead(
         teamName: m.entry_2_name ?? "",
         points: p2,
         opponentPoints: p1,
-        metricLabel: "Win margin",
+        metricLabel: H2H_LABELS.winMargin,
         metricValue: p2 - p1,
         track: "h2h",
       });

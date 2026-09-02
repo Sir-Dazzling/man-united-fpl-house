@@ -1,5 +1,6 @@
 import { auth, signOut } from "@/auth";
 import { PayoutForm } from "@/components/PayoutForm";
+import { MarkPayoutPaidButton } from "@/components/MarkPayoutPaidButton";
 import {
   deletePayout,
   markPayoutAnnounced,
@@ -42,6 +43,10 @@ export default async function AdminPayoutsPage() {
             <Link href="/motm" className="text-gold hover:underline">
               MOTM
             </Link>{" "}
+            /{" "}
+            <Link href="/admin/eos" className="text-gold hover:underline">
+              EOS
+            </Link>{" "}
             for auto-confirm.
           </p>
         </div>
@@ -76,7 +81,9 @@ export default async function AdminPayoutsPage() {
               {payouts.map((p) => (
                 <li
                   key={p.id}
-                  className="flex items-start justify-between gap-3 px-4 py-3"
+                  className={`flex items-start justify-between gap-3 px-4 py-3 ${
+                    p.status === "paid" ? "bg-emerald-500/5" : ""
+                  }`}
                 >
                   <div>
                     <p className="font-medium text-white">{p.managerName}</p>
@@ -85,43 +92,31 @@ export default async function AdminPayoutsPage() {
                       {p.gameweek ? ` · GW${p.gameweek}` : ""}
                       {" · "}
                       {p.placeLabel}
-                      {" · "}
-                      <span
-                        className={
-                          p.status === "paid"
-                            ? "text-emerald-400"
-                            : "text-amber-300/90"
-                        }
-                      >
-                        {p.status}
-                      </span>
                     </p>
                     <p className="mt-1 text-sm font-semibold text-gold">
                       {formatNgn(p.amountNgn)}
                     </p>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
+                  <div className="flex flex-col items-end gap-2">
                     {p.status !== "paid" ? (
                       <form action={markPayoutPaid}>
                         <input type="hidden" name="id" value={p.id} />
-                        <button
-                          type="submit"
-                          className="text-xs text-gold hover:underline"
-                        >
-                          Mark paid
-                        </button>
+                        <MarkPayoutPaidButton paid={false} />
                       </form>
                     ) : (
+                      <MarkPayoutPaidButton paid />
+                    )}
+                    {p.status === "paid" ? (
                       <form action={markPayoutAnnounced}>
                         <input type="hidden" name="id" value={p.id} />
                         <button
                           type="submit"
-                          className="text-xs text-white/40 hover:text-white/70"
+                          className="text-xs text-white/40 transition hover:text-white/70"
                         >
-                          Unmark
+                          Undo paid
                         </button>
                       </form>
-                    )}
+                    ) : null}
                     <form action={deletePayout}>
                       <input type="hidden" name="id" value={p.id} />
                       <button

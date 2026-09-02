@@ -1,13 +1,19 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { prisma } from "@/lib/db";
 import { getCurrentGameweek, getSeasonGameweeks } from "@/lib/fpl/client";
 import {
-  confirmClassicWeeklyAction,
-  confirmH2hWeeklyAction,
-  markWeeklyPaidAction,
+  confirmClassicWeeklyAndRedirect,
+  confirmH2hWeeklyAndRedirect,
+  markClassicWeeklyPaidAndRedirect,
+  markH2hWeeklyPaidAndRedirect,
 } from "@/lib/confirm-actions";
 import { resolveClassicWeekly, resolveH2hWeekly } from "@/lib/winners";
+import { resolveWeeklyForDisplay } from "@/lib/weekly-lock";
+import type { PayoutWorkflowRow } from "@/lib/payout-workflow";
+import { AdminFlashBanner } from "@/components/AdminFlashBanner";
+import { AdminPayoutWorkflow } from "@/components/AdminPayoutWorkflow";
 import { FraudCard, WinnersPreviewTable } from "@/components/WinnersPreview";
 import { PrizeRulesLegend } from "@/components/PrizeRulesLegend";
 import { ShareExportBar } from "@/components/ShareExportBar";
@@ -18,7 +24,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminGameweekPage({
   searchParams,
 }: {
-  searchParams: Promise<{ gw?: string; msg?: string }>;
+  searchParams: Promise<{ gw?: string; msg?: string; ok?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) {
@@ -32,13 +38,27 @@ export default async function AdminGameweekPage({
   ]);
   const gw = Number(params.gw ?? current?.id ?? 1);
 
-  const [classic, h2h] = await Promise.all([
-    resolveClassicWeekly(gw),
-    resolveH2hWeekly(gw),
+  const [classic, h2h, payouts] = await Promise.all([
+    resolveWeeklyForDisplay(gw, "classic_weekly", () => resolveClassicWeekly(gw)),
+    resolveWeeklyForDisplay(gw, "h2h_weekly", () => resolveH2hWeekly(gw)),
+    prisma.payout.findMany({
+      where: {
+        gameweek: gw,
+        category: { in: ["classic_weekly", "h2h_weekly"] },
+      },
+      orderBy: [{ amountNgn: "desc" }],
+    }),
   ]);
 
   const hasClassic = classic.winners.length > 0;
   const hasH2h = h2h.winners.length > 0;
+
+  const classicPayouts = mapPayoutRows(
+    payouts.filter((p) => p.category === "classic_weekly"),
+  );
+  const h2hPayouts = mapPayoutRows(
+    payouts.filter((p) => p.category === "h2h_weekly"),
+  );
 
   const csvRows = [
     ["league", "place", "manager", "team", "metric", "value", "transfers", "amount"],
@@ -73,7 +93,8 @@ export default async function AdminGameweekPage({
             Gameweek desk
           </h1>
           <p className="mt-2 text-white/60">
-            Preview → confirm winners → mark paid. Fraud is banter only.
+            Preview winners → confirm &amp; announce → mark paid when money is
+            sent.
           </p>
         </div>
       </div>
@@ -87,9 +108,10 @@ export default async function AdminGameweekPage({
       </div>
 
       {params.msg ? (
-        <p className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-300">
-          {params.msg}
-        </p>
+        <AdminFlashBanner
+          message={params.msg}
+          ok={params.ok !== "0"}
+        />
       ) : null}
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
@@ -120,43 +142,14 @@ export default async function AdminGameweekPage({
               />
             )}
             {hasClassic ? (
-              <div className="flex flex-wrap gap-2" data-export-exclude>
-                <form
-                  action={async (fd) => {
-                    "use server";
-                    fd.set("gameweek", String(gw));
-                    const res = await confirmClassicWeeklyAction(fd);
-                    redirect(
-                      `/admin/gameweek?gw=${gw}&msg=${encodeURIComponent(res.message)}`,
-                    );
-                  }}
-                >
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-united px-4 py-2 text-sm font-semibold text-white"
-                  >
-                    Confirm Classic winners
-                  </button>
-                </form>
-                <form
-                  action={async (fd) => {
-                    "use server";
-                    fd.set("gameweek", String(gw));
-                    fd.set("category", "classic_weekly");
-                    const res = await markWeeklyPaidAction(fd);
-                    redirect(
-                      `/admin/gameweek?gw=${gw}&msg=${encodeURIComponent(res.message)}`,
-                    );
-                  }}
-                >
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-gold/40 px-4 py-2 text-sm font-semibold text-gold"
-                  >
-                    Mark Classic paid
-                  </button>
-                </form>
-              </div>
+              <AdminPayoutWorkflow
+                trackLabel={`Classic weekly · GW${gw}`}
+                gameweek={gw}
+                category="classic_weekly"
+                payouts={classicPayouts}
+                confirmAction={confirmClassicWeeklyAndRedirect}
+                markPaidAction={markClassicWeeklyPaidAndRedirect}
+              />
             ) : null}
           </div>
 
@@ -177,43 +170,14 @@ export default async function AdminGameweekPage({
               />
             )}
             {hasH2h ? (
-              <div className="flex flex-wrap gap-2" data-export-exclude>
-                <form
-                  action={async (fd) => {
-                    "use server";
-                    fd.set("gameweek", String(gw));
-                    const res = await confirmH2hWeeklyAction(fd);
-                    redirect(
-                      `/admin/gameweek?gw=${gw}&msg=${encodeURIComponent(res.message)}`,
-                    );
-                  }}
-                >
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-united px-4 py-2 text-sm font-semibold text-white"
-                  >
-                    Confirm H2H winners
-                  </button>
-                </form>
-                <form
-                  action={async (fd) => {
-                    "use server";
-                    fd.set("gameweek", String(gw));
-                    fd.set("category", "h2h_weekly");
-                    const res = await markWeeklyPaidAction(fd);
-                    redirect(
-                      `/admin/gameweek?gw=${gw}&msg=${encodeURIComponent(res.message)}`,
-                    );
-                  }}
-                >
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-gold/40 px-4 py-2 text-sm font-semibold text-gold"
-                  >
-                    Mark H2H paid
-                  </button>
-                </form>
-              </div>
+              <AdminPayoutWorkflow
+                trackLabel={`H2H weekly · GW${gw}`}
+                gameweek={gw}
+                category="h2h_weekly"
+                payouts={h2hPayouts}
+                confirmAction={confirmH2hWeeklyAndRedirect}
+                markPaidAction={markH2hWeeklyPaidAndRedirect}
+              />
             ) : null}
           </div>
         </div>
@@ -224,14 +188,42 @@ export default async function AdminGameweekPage({
         <Link href="/motm" className="text-gold hover:underline">
           /motm
         </Link>
+        . End of season on{" "}
+        <Link href="/admin/eos" className="text-gold hover:underline">
+          /admin/eos
+        </Link>
         . Manual edits on{" "}
         <Link href="/admin/payouts" className="text-gold hover:underline">
           /admin/payouts
+        </Link>
+        .{" "}
+        <Link href="/admin/suspensions" className="text-gold hover:underline">
+          Suspend manager
         </Link>
         .
       </p>
     </div>
   );
+}
+
+function mapPayoutRows(
+  rows: Array<{
+    id: string;
+    managerName: string;
+    placeLabel: string;
+    amountNgn: number;
+    status: string;
+    paidAt: Date | null;
+  }>,
+): PayoutWorkflowRow[] {
+  return rows.map((p) => ({
+    id: p.id,
+    managerName: p.managerName,
+    placeLabel: p.placeLabel,
+    amountNgn: p.amountNgn,
+    status: p.status,
+    paidAt: p.paidAt,
+  }));
 }
 
 function EmptyDeskNote({ text }: { text: string }) {

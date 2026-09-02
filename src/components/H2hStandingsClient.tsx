@@ -8,6 +8,7 @@ import {
 } from "@/components/StandingsTable";
 import { PrizeRulesLegend } from "@/components/PrizeRulesLegend";
 import { ShareExportBar } from "@/components/ShareExportBar";
+import { EOS_LABELS, H2H_LABELS } from "@/lib/fpl-labels";
 
 export function H2hStandingsClient() {
   const { data, isPending, isError, error } = useH2hStandings();
@@ -44,7 +45,7 @@ export function H2hStandingsClient() {
   const { league, results, hidden, code, gw, throughGw, topGs, topGc } = data;
   const gsGcLive = gw != null && !gw.finished && throughGw < gw.id;
   const csvRows = [
-    ["rank", "manager", "team", "wdl", "gs", "gc", "gd", "pts"],
+    ["rank", "manager", "team", "wdl", "pts_for", "pts_against", "pts_diff", "pts"],
     ...results.map((r) => [
       String(r.rank),
       r.player_name,
@@ -92,18 +93,18 @@ export function H2hStandingsClient() {
       <div id="h2h-table-capture" className="mt-6 space-y-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <SpecialCard
-            title="Most Goals Scored"
-            subtitle="Season GS special (EOS)"
+            title={EOS_LABELS.mostGoalsScored}
+            subtitle="Season special (EOS)"
             manager={topGs?.player_name}
-            value={topGs ? `${topGs.points_for} GS` : "—"}
+            value={topGs ? `${topGs.points_for} ${H2H_LABELS.ptsFor}` : "—"}
           />
           <SpecialCard
-            title="Fewest Goals Conceded"
-            subtitle="Season GC special (EOS)"
+            title={EOS_LABELS.fewestGoalsConceded}
+            subtitle="Season special (EOS)"
             manager={topGc?.player_name}
             value={
               topGc != null
-                ? `${topGc.points_against ?? 0} GC`
+                ? `${topGc.points_against ?? 0} ${H2H_LABELS.ptsAgainst}`
                 : "—"
             }
           />
@@ -135,12 +136,12 @@ export function H2hStandingsClient() {
                     {row.player_name}
                     {isGs ? (
                       <span className="ml-2 text-[10px] uppercase tracking-wider text-gold">
-                        GS lead
+                        {H2H_LABELS.ptsFor} lead
                       </span>
                     ) : null}
                     {isGc ? (
                       <span className="ml-2 text-[10px] uppercase tracking-wider text-emerald-400">
-                        GC lead
+                        {H2H_LABELS.ptsAgainst} lead
                       </span>
                     ) : null}
                   </span>
@@ -166,7 +167,7 @@ export function H2hStandingsClient() {
             },
             {
               key: "gs",
-              header: "GS",
+              header: H2H_LABELS.ptsFor,
               align: "right",
               render: (row) => (
                 <span className="tabular-nums">{row.points_for}</span>
@@ -174,7 +175,7 @@ export function H2hStandingsClient() {
             },
             {
               key: "gc",
-              header: "GC",
+              header: H2H_LABELS.ptsAgainst,
               align: "right",
               render: (row) => (
                 <span className="tabular-nums">{row.points_against ?? 0}</span>
@@ -182,7 +183,7 @@ export function H2hStandingsClient() {
             },
             {
               key: "gd",
-              header: "GD",
+              header: H2H_LABELS.ptsDiff,
               align: "right",
               render: (row) => {
                 const gd = row.points_for - (row.points_against ?? 0);
@@ -203,7 +204,7 @@ export function H2hStandingsClient() {
             },
             {
               key: "total",
-              header: "Pts",
+              header: H2H_LABELS.pts,
               align: "right",
               render: (row) => (
                 <span className="font-semibold tabular-nums text-gold">
@@ -214,11 +215,12 @@ export function H2hStandingsClient() {
           ]}
         />
         <p className="text-xs text-white/40">
-          Rank follows FPL (pts → GS → GD). Weekly H2H cash = win your match
-          then best margin. Monthly table cash uses the same tie-break as this
-          table.
+          Rank follows FPL ({H2H_LABELS.pts} → {H2H_LABELS.ptsFor} →{" "}
+          {H2H_LABELS.ptsDiff} → fewest {H2H_LABELS.ptsAgainst}). Weekly H2H
+          cash = win your match then best margin. Monthly cash uses month-only
+          stats with the same FPL chain.
           {gsGcLive
-            ? ` GS, GC and GD reflect completed gameweeks through GW${throughGw}.`
+            ? ` ${H2H_LABELS.ptsFor}, ${H2H_LABELS.ptsAgainst} and ${H2H_LABELS.ptsDiff} reflect completed gameweeks through GW${throughGw}.`
             : ""}
           {hidden > 0
             ? ` · ${hidden} suspended manager${hidden === 1 ? "" : "s"} hidden from house standings.`

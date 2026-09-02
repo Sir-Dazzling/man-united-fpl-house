@@ -1,13 +1,23 @@
+import Image from "next/image";
 import { formatNgn } from "@/lib/league-config";
+
+export type MotmStat = {
+  label: string;
+  value: string;
+  /** Emphasize as the hero number */
+  accent?: boolean;
+};
 
 type MotmReadyProps = {
   track: "Classic" | "H2H";
   monthName: string;
   managerName: string;
   teamName: string;
-  metricLabel: string;
-  metricValue: number;
   amountNgn: number;
+  badgeUrl?: string | null;
+  /** Short line under the name, e.g. "Cleared the field by 14 pts" */
+  headline?: string;
+  stats: MotmStat[];
   notes?: string;
 };
 
@@ -20,11 +30,13 @@ type MotmLockedProps = {
 
 export function MotmAwardCard(props: MotmReadyProps) {
   const initials = teamInitials(props.teamName || props.managerName);
+  const hero = props.stats.find((s) => s.accent) ?? props.stats[0];
+  const rest = props.stats.filter((s) => s !== hero);
 
   return (
     <article className="motm-card group relative overflow-hidden rounded-2xl">
       <div className="motm-card-bg absolute inset-0" aria-hidden />
-      <div className="relative flex min-h-[420px] flex-col justify-between p-6 sm:p-7">
+      <div className="relative flex min-h-[480px] flex-col justify-between p-6 sm:p-7">
         <header className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-gold">
@@ -39,23 +51,67 @@ export function MotmAwardCard(props: MotmReadyProps) {
           </span>
         </header>
 
-        <div className="flex flex-1 flex-col items-center justify-center py-8 text-center">
-          <div className="motm-crest flex h-28 w-28 items-center justify-center rounded-full border-2 border-gold/50 bg-ink/50 shadow-[0_0_40px_rgba(218,41,28,0.35)]">
-            <span className="font-display text-4xl leading-none text-gold">
-              {initials}
-            </span>
-          </div>
-          <h2 className="mt-6 max-w-[16ch] font-display text-4xl leading-none text-white sm:text-5xl">
+        <div className="flex flex-1 flex-col items-center justify-center py-6 text-center">
+          {props.badgeUrl ? (
+            <Image
+              src={props.badgeUrl}
+              alt=""
+              width={112}
+              height={112}
+              className="motm-crest h-28 w-28 object-contain drop-shadow-[0_0_28px_rgba(218,41,28,0.45)]"
+            />
+          ) : (
+            <div className="motm-crest flex h-28 w-28 items-center justify-center rounded-full border-2 border-gold/50 bg-ink/50 shadow-[0_0_40px_rgba(218,41,28,0.35)]">
+              <span className="font-display text-4xl leading-none text-gold">
+                {initials}
+              </span>
+            </div>
+          )}
+          <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.35em] text-gold/80">
+            Champion
+          </p>
+          <h2 className="mt-2 max-w-[18ch] font-display text-4xl leading-none text-white sm:text-5xl">
             {props.teamName || "Unknown XI"}
           </h2>
           <p className="mt-3 text-base text-white/70">{props.managerName}</p>
-          <p className="mt-4 text-sm tabular-nums text-gold/90">
-            {props.metricLabel}{" "}
-            <span className="font-semibold text-gold">{props.metricValue}</span>
-            {props.notes ? (
-              <span className="text-white/40"> · {props.notes}</span>
-            ) : null}
-          </p>
+          {props.headline ? (
+            <p className="mt-3 max-w-sm text-sm leading-snug text-gold/90">
+              {props.headline}
+            </p>
+          ) : null}
+
+          {hero ? (
+            <div className="mt-6 rounded-xl border border-gold/25 bg-ink/35 px-6 py-3">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-white/45">
+                {hero.label}
+              </p>
+              <p className="mt-1 font-display text-4xl tabular-nums text-gold">
+                {hero.value}
+              </p>
+            </div>
+          ) : null}
+
+          {rest.length > 0 ? (
+            <dl className="mt-5 grid w-full max-w-md grid-cols-2 gap-2 sm:grid-cols-3">
+              {rest.map((stat) => (
+                <div
+                  key={stat.label}
+                  className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-2"
+                >
+                  <dt className="text-[10px] uppercase tracking-wider text-white/40">
+                    {stat.label}
+                  </dt>
+                  <dd className="mt-0.5 font-display text-lg tabular-nums text-white">
+                    {stat.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+
+          {props.notes ? (
+            <p className="mt-4 text-xs text-white/40">{props.notes}</p>
+          ) : null}
         </div>
 
         <footer className="border-t border-white/10 pt-4">
@@ -72,7 +128,7 @@ export function MotmLockedCard(props: MotmLockedProps) {
   return (
     <article className="motm-card relative overflow-hidden rounded-2xl">
       <div className="motm-card-bg motm-card-bg--locked absolute inset-0" aria-hidden />
-      <div className="relative flex min-h-[420px] flex-col justify-between p-6 sm:p-7">
+      <div className="relative flex min-h-[480px] flex-col justify-between p-6 sm:p-7">
         <header className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/40">

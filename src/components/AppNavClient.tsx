@@ -23,6 +23,7 @@ const PUBLIC_LINKS: NavLink[] = [
 
 const ADMIN_LINKS: NavLink[] = [
   { href: "/admin/gameweek", label: "GW Desk", admin: true },
+  { href: "/admin/eos", label: "EOS", admin: true },
   { href: "/admin/suspensions", label: "Suspend", admin: true },
   { href: "/admin/payouts", label: "Payouts", admin: true },
 ];

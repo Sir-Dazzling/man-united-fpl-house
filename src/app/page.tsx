@@ -45,31 +45,57 @@ export default function HomePage() {
       <section className="mx-auto max-w-6xl px-4 pb-12">
         <h2 className="font-display text-3xl text-white">The cash</h2>
         <p className="mt-2 text-sm text-white/55">
-          Same pots for Classic and H2H. Full detail on the rules page.
+          Same pots for Classic and H2H. Cash places follow official FPL
+          tie-breaks (still tied → split).{" "}
+          <Link href="/rules" className="text-gold hover:underline">
+            Full rules →
+          </Link>
         </p>
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <MoneyTile
             title="Weekly"
-            body="Classic: most points that GW. H2H: win your match, then biggest margin. Top 4 get paid."
+            body="Classic: highest GW Points that week (Transfers break ties, WC/FH excluded). H2H: must win your match, then best margin → Transfers. Top 4 paid."
             amount={`${formatNgn(PRIZES.weekly[0].amountNgn)} → ${formatNgn(PRIZES.weekly[3].amountNgn)}`}
           />
           <MoneyTile
             title="Monthly table"
-            body="Top 4 on the season table when the month’s last GW is done — not a mid-month peek."
+            body="Top 4 from that calendar month’s gameweeks only — not the season table. Classic: month points sum. H2H: Pts → Pts For → Pts Diff → fewest Pts Against."
             amount={`${formatNgn(PRIZES.monthlyTable[0].amountNgn)} → ${formatNgn(PRIZES.monthlyTable[3].amountNgn)}`}
           />
           <MoneyTile
             title="Manager of the Month"
-            body="Best form inside that month only. Classic = month points. H2H = match pts, then GD."
+            body="Same month ranking as monthly #1 — one winner per track. Classic: month GW Points. H2H: month Pts chain (no transfers on H2H table prizes)."
             amount={formatNgn(PRIZES.managerOfTheMonth.classic)}
           />
+          <MoneyTile
+            title="End of season"
+            body="Classic: season Points → Transfers (WC/FH excluded). H2H: season Pts chain + Most Goals Scored / Fewest Goals Conceded specials."
+            amount={`${formatNgn(PRIZES.endOfSeason[0].amountNgn)} → ${formatNgn(PRIZES.endOfSeason[3].amountNgn)}`}
+          />
         </div>
-        <Link
-          href="/rules"
-          className="mt-4 inline-block text-sm text-gold hover:underline"
-        >
-          Full ranking rules →
-        </Link>
+        <div className="mt-6 rounded-2xl border border-white/10 bg-panel/40 p-5 text-sm text-white/65">
+          <p className="text-xs uppercase tracking-[0.2em] text-gold">
+            FPL tie-breaks at a glance
+          </p>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            <li>
+              <strong className="text-white">Classic:</strong> Points → fewest
+              Transfers (Wildcard / Free Hit weeks don&apos;t count) → split
+            </li>
+            <li>
+              <strong className="text-white">H2H table / monthly:</strong> Pts →
+              Pts For → Pts Diff → fewest Pts Against → split
+            </li>
+            <li>
+              <strong className="text-white">H2H weekly:</strong> win match →
+              best margin → Transfers (house weekly format)
+            </li>
+            <li>
+              <strong className="text-white">GW1 lock:</strong> confirmed weekly
+              payouts stay final even if rules change later
+            </li>
+          </ul>
+        </div>
       </section>
 
       <section className="mx-auto grid max-w-6xl gap-10 px-4 pb-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">

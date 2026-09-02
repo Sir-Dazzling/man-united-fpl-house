@@ -21,6 +21,7 @@ type FixturesPayload = {
     finished: boolean;
     isCurrent: boolean;
   }>;
+  suspendedEntryIds: number[];
   matches: Array<{
     id: number;
     isBye: boolean;
@@ -75,6 +76,7 @@ export function FixturesClient() {
   }
 
   const selected = data.gw;
+  const suspended = new Set(data.suspendedEntryIds ?? []);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12">
@@ -132,6 +134,7 @@ export function FixturesClient() {
                   team={a?.teamName ?? "TBD"}
                   manager={a?.managerName ?? ""}
                   align="left"
+                  suspended={a?.entryId != null && suspended.has(a.entryId)}
                 />
                 <div className="text-center">
                   {played ? (
@@ -148,6 +151,7 @@ export function FixturesClient() {
                   team={b?.teamName ?? "TBD"}
                   manager={b?.managerName ?? ""}
                   align="right"
+                  suspended={b?.entryId != null && suspended.has(b.entryId)}
                 />
               </li>
             );
@@ -162,14 +166,23 @@ function Side({
   team,
   manager,
   align,
+  suspended = false,
 }: {
   team: string;
   manager: string;
   align: "left" | "right";
+  suspended?: boolean;
 }) {
   return (
     <div className={align === "right" ? "text-right" : "text-left"}>
-      <p className="font-medium text-white">{team}</p>
+      <p className="font-medium text-white">
+        {team}
+        {suspended ? (
+          <span className="ml-2 rounded bg-united/30 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-white/70">
+            Suspended
+          </span>
+        ) : null}
+      </p>
       <p className="text-xs text-white/50">{manager}</p>
     </div>
   );

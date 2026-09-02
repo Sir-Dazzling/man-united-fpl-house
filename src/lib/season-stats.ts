@@ -9,6 +9,7 @@ import {
   isMonthFullyPlayed,
 } from "@/lib/fpl/client";
 import type { EntryHistory } from "@/lib/fpl/types";
+import { chipExcludedGameweeks } from "@/lib/fpl-tiebreaks";
 import { LEAGUE, PRIZES } from "@/lib/league-config";
 import {
   filterOutSuspended,
@@ -74,14 +75,29 @@ async function mapPool<T, R>(
 function buildHistoryMaps(history: EntryHistory): HistoryMaps {
   const pointsByGw = new Map<number, number>();
   const transfersThroughGw = new Map<number, number>();
+  const excluded = chipExcludedGameweeks(history.chips);
   let runningTransfers = 0;
   const rows = [...history.current].sort((a, b) => a.event - b.event);
   for (const row of rows) {
     pointsByGw.set(row.event, row.points ?? 0);
-    runningTransfers += row.event_transfers ?? 0;
+    if (!excluded.has(row.event)) {
+      runningTransfers += row.event_transfers ?? 0;
+    }
     transfersThroughGw.set(row.event, runningTransfers);
   }
   return { pointsByGw, transfersThroughGw };
+}
+
+function transfersInGameweeks(
+  history: EntryHistory | undefined,
+  gwIds: number[],
+): number {
+  if (!history || gwIds.length === 0) return 0;
+  const excluded = chipExcludedGameweeks(history.chips);
+  const set = new Set(gwIds);
+  return history.current
+    .filter((row) => set.has(row.event) && !excluded.has(row.event))
+    .reduce((sum, row) => sum + (row.event_transfers ?? 0), 0);
 }
 
 function transfersAt(
@@ -265,10 +281,12 @@ async function computeSeasonStats(): Promise<SeasonStatsPayload> {
   }
 
   const historyByEntry = new Map<number, HistoryMaps>();
+  const rawHistoryByEntry = new Map<number, EntryHistory>();
   const entryIds = [...metaByEntry.keys()];
   await mapPool(entryIds, 8, async (entryId) => {
     try {
       const history = await getEntryHistory(entryId);
+      rawHistoryByEntry.set(entryId, history);
       historyByEntry.set(entryId, buildHistoryMaps(history));
     } catch {
       historyByEntry.set(entryId, {
@@ -342,7 +360,6 @@ async function computeSeasonStats(): Promise<SeasonStatsPayload> {
     if (!status.ready) continue;
     completedMonthCount += 1;
     const ids = status.finished.map((g) => g.id);
-    const throughGw = ids.at(-1) ?? 1;
 
     const classicCandidates: Candidate[] = classicEntries.map((e) => {
       const maps = historyByEntry.get(e.entryId);
@@ -354,7 +371,10 @@ async function computeSeasonStats(): Promise<SeasonStatsPayload> {
         sortPrimary: pts,
         metricLabel: "Month points",
         metricValue: pts,
-        transfersUsed: transfersAt(maps, throughGw),
+        transfersUsed: transfersInGameweeks(
+          rawHistoryByEntry.get(e.entryId),
+          ids,
+        ),
       };
     });
     if (!classicCandidates.every((c) => c.sortPrimary === 0)) {
@@ -372,14 +392,22 @@ async function computeSeasonStats(): Promise<SeasonStatsPayload> {
 
     const h2hStats = new Map<
       number,
-      { entryId: number; managerName: string; teamName: string; matchPts: number; gd: number }
+      {
+        entryId: number;
+        managerName: string;
+        teamName: string;
+        matchPts: number;
+        ptsFor: number;
+        ptsAgainst: number;
+      }
     >();
     const bumpH2h = (
       entryId: number,
       managerName: string,
       teamName: string,
       matchPts: number,
-      gd: number,
+      ptsFor: number,
+      ptsAgainst: number,
     ) => {
       if (suspendedH2h.has(entryId)) return;
       const cur = h2hStats.get(entryId) ?? {
@@ -387,10 +415,12 @@ async function computeSeasonStats(): Promise<SeasonStatsPayload> {
         managerName,
         teamName,
         matchPts: 0,
-        gd: 0,
+        ptsFor: 0,
+        ptsAgainst: 0,
       };
       cur.matchPts += matchPts;
-      cur.gd += gd;
+      cur.ptsFor += ptsFor;
+      cur.ptsAgainst += ptsAgainst;
       cur.managerName = managerName;
       cur.teamName = teamName;
       h2hStats.set(entryId, cur);
@@ -402,8 +432,6 @@ async function computeSeasonStats(): Promise<SeasonStatsPayload> {
         if (match.is_bye || !match.entry_1_entry || !match.entry_2_entry) continue;
         const p1 = match.entry_1_points ?? 0;
         const p2 = match.entry_2_points ?? 0;
-        const gd1 = p1 - p2;
-        const gd2 = p2 - p1;
         let pts1 = 1;
         let pts2 = 1;
         if (p1 > p2) {
@@ -418,14 +446,16 @@ async function computeSeasonStats(): Promise<SeasonStatsPayload> {
           match.entry_1_player_name ?? "Unknown",
           match.entry_1_name ?? "",
           pts1,
-          gd1,
+          p1,
+          p2,
         );
         bumpH2h(
           match.entry_2_entry,
           match.entry_2_player_name ?? "Unknown",
           match.entry_2_name ?? "",
           pts2,
-          gd2,
+          p2,
+          p1,
         );
       }
     }
@@ -435,10 +465,12 @@ async function computeSeasonStats(): Promise<SeasonStatsPayload> {
       managerName: s.managerName,
       teamName: s.teamName,
       sortPrimary: s.matchPts,
-      sortSecondary: s.gd,
-      metricLabel: "H2H pts (GD)",
+      sortSecondary: s.ptsFor,
+      sortTertiary: s.ptsFor - s.ptsAgainst,
+      sortQuaternary: -s.ptsAgainst,
+      metricLabel: "H2H pts",
       metricValue: s.matchPts,
-      transfersUsed: transfersAt(historyByEntry.get(s.entryId), throughGw),
+      transfersUsed: 0,
     }));
     if (h2hCandidates.length > 0) {
       const motmPrize = [

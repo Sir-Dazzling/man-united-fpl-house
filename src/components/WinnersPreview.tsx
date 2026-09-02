@@ -115,8 +115,11 @@ export function FraudCard({
         <p className="mt-3 text-sm text-white/45">Nobody to roast… yet.</p>
       ) : (
         <ul className="mt-3 space-y-3">
-          {fraud.map((f) => (
-            <li key={f.entryId} className="flex items-start gap-3">
+          {fraud.map((f, index) => (
+            <li
+              key={`${f.entryId}-${f.roast}-${index}`}
+              className="flex items-start gap-3"
+            >
               <ClubBadge
                 badgeUrl={f.badgeUrl}
                 name={f.teamName || f.managerName}

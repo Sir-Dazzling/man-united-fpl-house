@@ -48,9 +48,11 @@ export default async function AdminSuspensionsPage() {
             Suspend managers
           </h1>
           <p className="mt-3 max-w-xl text-white/60">
-            Flag entries so house standings and prize math ignore them — useful
-            when someone is kicked from Classic but stuck in H2H after fixtures
-            lock. Scope can be Classic, H2H, or both.
+            Flag entries so house standings and prize math ignore them. Leaving
+            or getting kicked on the FPL site does <strong className="text-white">not</strong>{" "}
+            auto-update this app — you must suspend them here too. Suspended
+            managers still appear on H2H fixtures (with a badge). Scope can be
+            Classic, H2H, or both.
           </p>
           <p className="mt-2 text-sm text-white/45">
             <Link href="/admin/gameweek" className="text-gold hover:underline">

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useHomeLeads } from "@/hooks/useHomeLeads";
 import { FraudCard } from "@/components/WinnersPreview";
+import { CLASSIC_LABELS, H2H_LABELS } from "@/lib/fpl-labels";
 import type { GwLead, GwStatus } from "@/lib/gw-leads";
 
 export function HomeLiveSection() {
@@ -92,8 +93,8 @@ function LeadCard({
             <p className="mt-2 text-sm text-white/65">{lead.teamName}</p>
             <p className="mt-2 text-sm font-semibold tabular-nums text-gold">
               {lead.track === "h2h" && lead.opponentPoints != null
-                ? `${lead.points}–${lead.opponentPoints} · +${lead.metricValue}`
-                : `${lead.points} pts`}
+                ? `${lead.points}–${lead.opponentPoints} · +${lead.metricValue} margin`
+                : `${lead.points} ${CLASSIC_LABELS.gwPoints.toLowerCase()}`}
             </p>
             <p className="mt-1.5 text-xs text-white/50">
               {lead.track === "h2h"
@@ -136,22 +137,22 @@ function StatusChip({ status }: { status: GwStatus }) {
 
 function leadStateLine(lead: GwLead): string {
   if (lead.tiedCount > 1) {
-    return `Tied with ${lead.tiedCount} on top`;
+    return `Tied on ${CLASSIC_LABELS.gwPoints} · ${CLASSIC_LABELS.transfers} decide`;
   }
   if (lead.gapToSecond > 0) {
-    return `+${lead.gapToSecond} pts clear`;
+    return `+${lead.gapToSecond} ${CLASSIC_LABELS.gwPoints.toLowerCase()} clear`;
   }
-  return "Out in front";
+  return `Leading on ${CLASSIC_LABELS.gwPoints.toLowerCase()}`;
 }
 
 function h2hStateLine(lead: GwLead): string {
   if (lead.tiedCount > 1) {
-    return `Tied best margin · ${lead.tiedCount} winners`;
+    return `Tied ${H2H_LABELS.winMargin.toLowerCase()} · ${CLASSIC_LABELS.transfers} decide`;
   }
   if (lead.gapToSecond > 0) {
-    return `Best win margin · +${lead.gapToSecond} clear`;
+    return `Best ${H2H_LABELS.winMargin.toLowerCase()} · +${lead.gapToSecond} clear`;
   }
-  return "Best win margin this GW";
+  return `Best ${H2H_LABELS.winMargin.toLowerCase()} among winners this GW`;
 }
 
 function teamInitials(name: string): string {

@@ -3,7 +3,9 @@ import {
   getAllClassicStandings,
   getCurrentGameweek,
   getEntryHistory,
+  getFinishedGameweeks,
 } from "@/lib/fpl/client";
+import { compareClassicFpl, getFplTransferCountThroughGw } from "@/lib/fpl-tiebreaks";
 import { LEAGUE } from "@/lib/league-config";
 import {
   filterOutSuspended,
@@ -68,21 +70,29 @@ export async function GET() {
     const visible = filterOutSuspended(raw, suspended);
     const gwId = gw?.id ?? 1;
     const results = await withHistoryGwPoints(visible, gwId);
+    const finishedGws = await getFinishedGameweeks();
+    const throughGw =
+      gw?.finished === true ? gwId : (finishedGws.at(-1)?.id ?? gwId);
 
-    // Keep table ordered by corrected season total (FPL rank can lag)
-    results.sort((a, b) => {
-      if (b.total !== a.total) return b.total - a.total;
-      if (b.event_total !== a.event_total) return b.event_total - a.event_total;
-      return a.player_name.localeCompare(b.player_name);
+    const withTransfers = await mapPool(results, 8, async (row) => {
+      const transfers = await getFplTransferCountThroughGw(row.entry, throughGw);
+      return { ...row, fplTransfers: transfers };
     });
-    results.forEach((row, i) => {
+
+    withTransfers.sort((a, b) =>
+      compareClassicFpl(
+        { points: a.total, transfers: a.fplTransfers, entryId: a.entry },
+        { points: b.total, transfers: b.fplTransfers, entryId: b.entry },
+      ),
+    );
+    withTransfers.forEach((row, i) => {
       row.rank = i + 1;
       row.rank_sort = i + 1;
     });
 
     return NextResponse.json({
       league,
-      results,
+      results: withTransfers,
       hidden: raw.length - results.length,
       code: LEAGUE.classic.code,
       gw: gw

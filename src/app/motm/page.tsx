@@ -1,13 +1,25 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { prisma } from "@/lib/db";
 import {
-  confirmClassicMonthlyAction,
-  confirmClassicMotmAction,
-  confirmH2hMonthlyAction,
-  confirmH2hMotmAction,
+  confirmClassicMonthlyAndRedirect,
+  confirmClassicMotmAndRedirect,
+  confirmH2hMonthlyAndRedirect,
+  confirmH2hMotmAndRedirect,
+  markMotmPaidAndRedirect,
 } from "@/lib/confirm-actions";
-import { getBootstrapStatic, getSeasonMonths, isMonthFullyPlayed } from "@/lib/fpl/client";
+import {
+  getBootstrapStatic,
+  getSeasonMonths,
+  isMonthFullyPlayed,
+} from "@/lib/fpl/client";
+import { CLASSIC_LABELS, H2H_LABELS } from "@/lib/fpl-labels";
+import {
+  getClassicMonthStats,
+  getH2hMonthStats,
+  type ClassicMonthRow,
+  type H2hMonthRow,
+} from "@/lib/month-stats";
 import {
   resolveClassicMonthlyTable,
   resolveClassicMotm,
@@ -15,10 +27,17 @@ import {
   resolveH2hMotm,
 } from "@/lib/winners";
 import { FraudCard, WinnersPreviewTable } from "@/components/WinnersPreview";
-import { MotmAwardCard, MotmLockedCard } from "@/components/MotmAwardCard";
+import { AdminFlashBanner } from "@/components/AdminFlashBanner";
+import { AdminPayoutWorkflow } from "@/components/AdminPayoutWorkflow";
+import {
+  MotmAwardCard,
+  MotmLockedCard,
+  type MotmStat,
+} from "@/components/MotmAwardCard";
 import { PrizeRulesLegend } from "@/components/PrizeRulesLegend";
 import { ShareExportBar } from "@/components/ShareExportBar";
 import { formatNgn, PRIZES } from "@/lib/league-config";
+import type { PayoutWorkflowRow } from "@/lib/payout-workflow";
 import type { ResolvedWinner } from "@/lib/winners";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +45,7 @@ export const dynamic = "force-dynamic";
 export default async function MotmPage({
   searchParams,
 }: {
-  searchParams: Promise<{ year?: string; month?: string; msg?: string }>;
+  searchParams: Promise<{ year?: string; month?: string; msg?: string; ok?: string }>;
 }) {
   const params = await searchParams;
   const seasonMonths = await getSeasonMonths();
@@ -67,15 +86,66 @@ export default async function MotmPage({
   let hMotm: Awaited<ReturnType<typeof resolveH2hMotm>> | null = null;
   let cMonth: { winners: ResolvedWinner[] } = { winners: [] };
   let hMonth: { winners: ResolvedWinner[] } = { winners: [] };
+  let classicMonthRows: ClassicMonthRow[] = [];
+  let h2hMonthRows: H2hMonthRow[] = [];
 
   if (monthlyReady) {
-    [cMotm, hMotm, cMonth, hMonth] = await Promise.all([
-      resolveClassicMotm(year, monthIndex),
-      resolveH2hMotm(year, monthIndex),
-      resolveClassicMonthlyTable(throughGw),
-      resolveH2hMonthlyTable(throughGw),
-    ]);
+    const [cMotmRes, hMotmRes, cMonthRes, hMonthRes, classicStats, h2hStats] =
+      await Promise.all([
+        resolveClassicMotm(year, monthIndex),
+        resolveH2hMotm(year, monthIndex),
+        resolveClassicMonthlyTable(year, monthIndex),
+        resolveH2hMonthlyTable(year, monthIndex),
+        getClassicMonthStats(year, monthIndex),
+        getH2hMonthStats(year, monthIndex),
+      ]);
+    cMotm = cMotmRes;
+    hMotm = hMotmRes;
+    cMonth = cMonthRes;
+    hMonth = hMonthRes;
+    classicMonthRows = classicStats.rows;
+    h2hMonthRows = h2hStats.rows;
   }
+
+  const monthPayouts = monthlyReady
+    ? await prisma.payout.findMany({
+        where: {
+          gameweek: monthKey,
+          category: {
+            in: [
+              "motm_classic",
+              "motm_h2h",
+              "classic_monthly",
+              "h2h_monthly",
+            ],
+          },
+        },
+        orderBy: { amountNgn: "desc" },
+      })
+    : [];
+
+  const motmClassicPayouts = mapPayoutRows(
+    monthPayouts.filter((p) => p.category === "motm_classic"),
+  );
+  const motmH2hPayouts = mapPayoutRows(
+    monthPayouts.filter((p) => p.category === "motm_h2h"),
+  );
+  const classicMonthlyPayouts = mapPayoutRows(
+    monthPayouts.filter((p) => p.category === "classic_monthly"),
+  );
+  const h2hMonthlyPayouts = mapPayoutRows(
+    monthPayouts.filter((p) => p.category === "h2h_monthly"),
+  );
+
+  const monthHidden = {
+    year,
+    monthIndex,
+    monthKey,
+  };
+  const monthRedirectFields = {
+    year,
+    monthIndex,
+  };
 
   const session = await auth();
   const monthName = new Date(Date.UTC(year, monthIndex, 1)).toLocaleString(
@@ -88,6 +158,12 @@ export default async function MotmPage({
 
   const classicWinner = cMotm?.winners[0];
   const h2hWinner = hMotm?.winners[0];
+  const classicCard = classicWinner
+    ? classicMotmCardStats(classicWinner.entryId, classicMonthRows, finished.length)
+    : null;
+  const h2hCard = h2hWinner
+    ? h2hMotmCardStats(h2hWinner.entryId, h2hMonthRows)
+    : null;
 
   const csvRows = [
     ["track", "manager", "place", "amount"],
@@ -143,6 +219,20 @@ export default async function MotmPage({
             <Link href="/rules" className="text-gold hover:underline">
               Algorithms →
             </Link>
+            {session?.user ? (
+              <>
+                {" "}
+                · Suspended managers are excluded from these races — manage on{" "}
+                <Link
+                  href="/admin/suspensions"
+                  className="text-gold hover:underline"
+                >
+                  /admin/suspensions
+                </Link>
+                {" "}
+                (FPL site leave alone is not enough).
+              </>
+            ) : null}
           </p>
           <p className="mt-1 text-xs text-white/40">
             GWs in month: {monthGws.map((g) => g.id).join(", ") || "none yet"} ·
@@ -173,9 +263,10 @@ export default async function MotmPage({
       </div>
 
       {params.msg ? (
-        <p className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-300">
-          {params.msg}
-        </p>
+        <AdminFlashBanner
+          message={params.msg}
+          ok={params.ok !== "0"}
+        />
       ) : null}
 
       <div className="mt-6">
@@ -206,15 +297,16 @@ export default async function MotmPage({
             ) : (
               <>
                 <div className="space-y-4">
-                  {classicWinner ? (
+                  {classicWinner && classicCard ? (
                     <MotmAwardCard
                       track="Classic"
                       monthName={monthName}
                       managerName={classicWinner.managerName}
                       teamName={classicWinner.teamName}
-                      metricLabel={classicWinner.metricLabel}
-                      metricValue={classicWinner.metricValue}
                       amountNgn={classicWinner.amountNgn}
+                      badgeUrl={classicWinner.badgeUrl}
+                      headline={classicCard.headline}
+                      stats={classicCard.stats}
                       notes={classicWinner.notes ?? undefined}
                     />
                   ) : (
@@ -232,37 +324,29 @@ export default async function MotmPage({
                     />
                   ) : null}
                   {session?.user && classicWinner ? (
-                    <form
-                      action={async (fd) => {
-                        "use server";
-                        fd.set("year", String(year));
-                        fd.set("monthIndex", String(monthIndex));
-                        fd.set("monthKey", String(monthKey));
-                        const res = await confirmClassicMotmAction(fd);
-                        redirect(
-                          `/motm?year=${year}&month=${monthIndex}&msg=${encodeURIComponent(res.message)}`,
-                        );
-                      }}
-                    >
-                      <button
-                        type="submit"
-                        className="rounded-lg bg-united px-4 py-2 text-sm font-semibold text-white"
-                      >
-                        Confirm Classic MOTM
-                      </button>
-                    </form>
+                    <AdminPayoutWorkflow
+                      trackLabel={`Classic MOTM · ${monthName}`}
+                      gameweek={monthKey}
+                      category="motm_classic"
+                      payouts={motmClassicPayouts}
+                      confirmAction={confirmClassicMotmAndRedirect}
+                      confirmHiddenFields={monthHidden}
+                      markPaidAction={markMotmPaidAndRedirect}
+                      markPaidHiddenFields={monthRedirectFields}
+                    />
                   ) : null}
                 </div>
                 <div className="space-y-4">
-                  {h2hWinner ? (
+                  {h2hWinner && h2hCard ? (
                     <MotmAwardCard
                       track="H2H"
                       monthName={monthName}
                       managerName={h2hWinner.managerName}
                       teamName={h2hWinner.teamName}
-                      metricLabel={h2hWinner.metricLabel}
-                      metricValue={h2hWinner.metricValue}
                       amountNgn={h2hWinner.amountNgn}
+                      badgeUrl={h2hWinner.badgeUrl}
+                      headline={h2hCard.headline}
+                      stats={h2hCard.stats}
                       notes={h2hWinner.notes ?? undefined}
                     />
                   ) : (
@@ -277,25 +361,16 @@ export default async function MotmPage({
                     <FraudCard title="H2H fraud of the month" fraud={hMotm.fraud} />
                   ) : null}
                   {session?.user && h2hWinner ? (
-                    <form
-                      action={async (fd) => {
-                        "use server";
-                        fd.set("year", String(year));
-                        fd.set("monthIndex", String(monthIndex));
-                        fd.set("monthKey", String(monthKey));
-                        const res = await confirmH2hMotmAction(fd);
-                        redirect(
-                          `/motm?year=${year}&month=${monthIndex}&msg=${encodeURIComponent(res.message)}`,
-                        );
-                      }}
-                    >
-                      <button
-                        type="submit"
-                        className="rounded-lg bg-united px-4 py-2 text-sm font-semibold text-white"
-                      >
-                        Confirm H2H MOTM
-                      </button>
-                    </form>
+                    <AdminPayoutWorkflow
+                      trackLabel={`H2H MOTM · ${monthName}`}
+                      gameweek={monthKey}
+                      category="motm_h2h"
+                      payouts={motmH2hPayouts}
+                      confirmAction={confirmH2hMotmAndRedirect}
+                      confirmHiddenFields={monthHidden}
+                      markPaidAction={markMotmPaidAndRedirect}
+                      markPaidHiddenFields={monthRedirectFields}
+                    />
                   ) : null}
                 </div>
               </>
@@ -327,26 +402,16 @@ export default async function MotmPage({
                     winners={cMonth.winners}
                   />
                   {session?.user ? (
-                    <form
-                      action={async (fd) => {
-                        "use server";
-                        fd.set("year", String(year));
-                        fd.set("monthIndex", String(monthIndex));
-                        fd.set("throughGw", String(throughGw));
-                        fd.set("monthKey", String(monthKey));
-                        const res = await confirmClassicMonthlyAction(fd);
-                        redirect(
-                          `/motm?year=${year}&month=${monthIndex}&msg=${encodeURIComponent(res.message)}`,
-                        );
-                      }}
-                    >
-                      <button
-                        type="submit"
-                        className="rounded-lg border border-gold/40 px-4 py-2 text-sm font-semibold text-gold"
-                      >
-                        Confirm Classic monthly table
-                      </button>
-                    </form>
+                    <AdminPayoutWorkflow
+                      trackLabel={`Classic monthly table · ${monthName}`}
+                      gameweek={monthKey}
+                      category="classic_monthly"
+                      payouts={classicMonthlyPayouts}
+                      confirmAction={confirmClassicMonthlyAndRedirect}
+                      confirmHiddenFields={{ ...monthHidden, throughGw }}
+                      markPaidAction={markMotmPaidAndRedirect}
+                      markPaidHiddenFields={monthRedirectFields}
+                    />
                   ) : null}
                 </div>
                 <div className="space-y-4">
@@ -355,26 +420,16 @@ export default async function MotmPage({
                     winners={hMonth.winners}
                   />
                   {session?.user ? (
-                    <form
-                      action={async (fd) => {
-                        "use server";
-                        fd.set("year", String(year));
-                        fd.set("monthIndex", String(monthIndex));
-                        fd.set("throughGw", String(throughGw));
-                        fd.set("monthKey", String(monthKey));
-                        const res = await confirmH2hMonthlyAction(fd);
-                        redirect(
-                          `/motm?year=${year}&month=${monthIndex}&msg=${encodeURIComponent(res.message)}`,
-                        );
-                      }}
-                    >
-                      <button
-                        type="submit"
-                        className="rounded-lg border border-gold/40 px-4 py-2 text-sm font-semibold text-gold"
-                      >
-                        Confirm H2H monthly table
-                      </button>
-                    </form>
+                    <AdminPayoutWorkflow
+                      trackLabel={`H2H monthly table · ${monthName}`}
+                      gameweek={monthKey}
+                      category="h2h_monthly"
+                      payouts={h2hMonthlyPayouts}
+                      confirmAction={confirmH2hMonthlyAndRedirect}
+                      confirmHiddenFields={{ ...monthHidden, throughGw }}
+                      markPaidAction={markMotmPaidAndRedirect}
+                      markPaidHiddenFields={monthRedirectFields}
+                    />
                   ) : null}
                 </div>
               </>
@@ -401,9 +456,126 @@ function MonthlyLocked({
         <span className="text-gold">{lastGwLabel}</span>) has been played.
       </p>
       <p className="mt-2 text-xs text-white/40">
-        Monthly table cash uses the season standings snapshot once the month is
-        complete — not a live mid-month preview.
+        Monthly table ranks month-only stats (GW points or H2H match results from
+        this month&apos;s gameweeks) with official FPL tie-breaks — not a live
+        mid-month preview.
       </p>
     </div>
   );
+}
+
+function mapPayoutRows(
+  rows: Array<{
+    id: string;
+    managerName: string;
+    placeLabel: string;
+    amountNgn: number;
+    status: string;
+    paidAt: Date | null;
+  }>,
+): PayoutWorkflowRow[] {
+  return rows.map((p) => ({
+    id: p.id,
+    managerName: p.managerName,
+    placeLabel: p.placeLabel,
+    amountNgn: p.amountNgn,
+    status: p.status,
+    paidAt: p.paidAt,
+  }));
+}
+
+function classicMotmCardStats(
+  entryId: number,
+  rows: ClassicMonthRow[],
+  gwCount: number,
+): { headline: string; stats: MotmStat[] } | null {
+  const sorted = [...rows].sort(
+    (a, b) =>
+      b.monthPoints - a.monthPoints ||
+      a.monthTransfers - b.monthTransfers,
+  );
+  const winner = sorted.find((r) => r.entryId === entryId);
+  if (!winner) return null;
+  const second = sorted.find((r) => r.entryId !== entryId);
+  const clearance = second
+    ? winner.monthPoints - second.monthPoints
+    : winner.monthPoints;
+  const avg =
+    gwCount > 0 ? Math.round((winner.monthPoints / gwCount) * 10) / 10 : winner.monthPoints;
+
+  const headline =
+    clearance > 0
+      ? `Cleared the field by ${clearance} ${CLASSIC_LABELS.monthPoints.toLowerCase()}`
+      : `Joint top on ${CLASSIC_LABELS.monthPoints.toLowerCase()} — won on transfers`;
+
+  return {
+    headline,
+    stats: [
+      {
+        label: CLASSIC_LABELS.monthPoints,
+        value: String(winner.monthPoints),
+        accent: true,
+      },
+      { label: "Avg / GW", value: String(avg) },
+      { label: "GWs", value: String(gwCount) },
+      {
+        label: CLASSIC_LABELS.transfers,
+        value: String(winner.monthTransfers),
+      },
+      {
+        label: "Lead",
+        value: clearance > 0 ? `+${clearance}` : "Tied",
+      },
+    ],
+  };
+}
+
+function h2hMotmCardStats(
+  entryId: number,
+  rows: H2hMonthRow[],
+): { headline: string; stats: MotmStat[] } | null {
+  const sorted = [...rows].sort(
+    (a, b) =>
+      b.matchPts - a.matchPts ||
+      b.ptsFor - a.ptsFor ||
+      b.ptsDiff - a.ptsDiff ||
+      a.ptsAgainst - b.ptsAgainst,
+  );
+  const winner = sorted.find((r) => r.entryId === entryId);
+  if (!winner) return null;
+  const second = sorted.find((r) => r.entryId !== entryId);
+  const clearance = second ? winner.matchPts - second.matchPts : winner.matchPts;
+  const played = winner.wins + winner.draws + winner.losses;
+
+  const headline =
+    clearance > 0
+      ? `${winner.wins}W-${winner.draws}D-${winner.losses}L · ${clearance} ${H2H_LABELS.pts} clear`
+      : `${winner.wins}W-${winner.draws}D-${winner.losses}L · edged it on ${H2H_LABELS.ptsFor}`;
+
+  const diffLabel =
+    winner.ptsDiff > 0
+      ? `+${winner.ptsDiff}`
+      : String(winner.ptsDiff);
+
+  return {
+    headline,
+    stats: [
+      {
+        label: H2H_LABELS.h2hPts,
+        value: String(winner.matchPts),
+        accent: true,
+      },
+      {
+        label: "Record",
+        value: `${winner.wins}-${winner.draws}-${winner.losses}`,
+      },
+      { label: H2H_LABELS.ptsFor, value: String(winner.ptsFor) },
+      { label: H2H_LABELS.ptsDiff, value: diffLabel },
+      { label: H2H_LABELS.ptsAgainst, value: String(winner.ptsAgainst) },
+      {
+        label: "Played",
+        value: String(played),
+      },
+    ],
+  };
 }
